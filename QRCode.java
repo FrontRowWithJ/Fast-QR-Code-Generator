@@ -6,6 +6,7 @@ public class QRCode implements QRConstants {
     private final int QRVersion;
     private final int QRWidth;
     private final String mode;
+    private final int ECL;
     // number of format and verion information modules
     private int[] formatData = new int[15];
     private int[] versionData;
@@ -28,9 +29,10 @@ public class QRCode implements QRConstants {
             }
     }
 
-    public QRCode(int ECLVersion, int mpr, String message) {
+    public QRCode(int ECL, int mpr, String message) {
         mode = getMode(message);
-        QRVersion = getQRVersion(message, ECLVersion, mode);
+        QRVersion = getQRVersion(message, ECL, mode);
+        this.ECL = ECL;
         int[] messageBitStream = null;
         switch (mode) {
         case ALPHANUMERIC_MODE:
@@ -53,18 +55,18 @@ public class QRCode implements QRConstants {
         int QRDarkModuleI = 4 * QRVersion + 9;
         int QRDarkModuleJ = 8;
         QRData[QRDarkModuleI][QRDarkModuleJ] = TRUE_READ_ONLY;
-        genFormatData(ECLVersion, mpr);
+        genFormatData(ECL, mpr);
         addFormatData();
         genVersionData();
         addVersionData();
         addAlignmentPatterns();
     }
 
-    private void genFormatData(int ECLVersion, int mpr) {
+    private void genFormatData(int ECL, int mpr) {
         int test = mpr & 0xFF;
         if (test > 7)
             throw new IllegalArgumentException("mpr must not be greater than 7 (111)");
-        int result = ECLVersion;
+        int result = ECL;
         result <<= 3;
         result |= mpr;
 
@@ -372,12 +374,12 @@ public class QRCode implements QRConstants {
         return mode;
     }
 
-    public int getQRVersion(String message, int ECLVersion, String mode) {
+    public int getQRVersion(String message, int ECL, String mode) {
         // only numbers = numeric mode
         // numbers and characters = alphanumeric mode
         // more than that = byte mode
         int messageLength = -1;
-        if (ECLVersion < 0 || ECLVersion > 3)
+        if (ECL < 0 || ECL > 3)
             throw new IllegalArgumentException("The ECL version must be a value between 0 and 3 inclusive");
         if (message.length() == 0)
             return 1;
@@ -413,8 +415,8 @@ public class QRCode implements QRConstants {
         for (int i = 1; i <= 40; i++) {
             int c = 0;
             if (i < 4)
-                c += P_VALUE[i - 1][ECLVersion];
-            int messageCodeWordCount = numOfCodeWords(i) - c - ERROR_CODES[ECLVersion][i - 1];
+                c += P_VALUE[i - 1][ECL];
+            int messageCodeWordCount = numOfCodeWords(i) - c - ERROR_CODES[ECL][i - 1];
             if (messageCodeWordCount >= byteLength)
                 return i;
         }
@@ -438,4 +440,35 @@ public class QRCode implements QRConstants {
     }
 
     // generate final qr message
+    private void genMessageBlock(int[] message) {
+        int[] blockStructure = getBlockStructure();
+        int[][] messageBlock = new int[BLOCK_COUNT[ECL][QRVersion - 1]];
+        for (int i = 0; i < blockStructure[2]; i++) {
+            messageBlock[i] = new int[blockStructure[0]];
+            System.arraycopy(message, blockStructure[0] * i, messageBlock[i], 0, messageBlock[i].length);
+        }
+        if (blockStructure.length == 6)
+            for (int i = blockStructure[2]; i < blockStructure[4]; i++) {
+                messageBlock[i] = new int[blockStructure[3]];
+                System.arraycopy(message, blockStructure[3] * i, messageBlock[i], 0, messageBlock[i].length);
+            }
+    }
+
+    private int[] getBlockStructure() {
+        // array Structure: result[0] = numOfDataCodewords per block, result[1] =
+        // numOfErrorCodewords per block, result[2] = number of blocks
+        int numOfCodeWords = numOfCodeWords(QRVersion);
+        int[] result = new int[numOfCodeWords % BLOCK_COUNT[ECL][QRVersion - 1] == 0 ? 3 : 6];
+        result[0] = (numOfCodeWords - ERROR_CODES[ECL][QRVersion - 1]) / BLOCK_COUNT[ECL][QRVersion - 1];
+        result[1] = numOfCodeWords / BLOCK_COUNT[ECL][QRVersion - 1] - result[0]
+                - (QRVersion < 4 ? P_VALUE[QRVersion - 1][ECL] : 0);
+        int n = numOfCodeWords - (numOfCodeWords / BLOCK_COUNT[ECL][QRVersion - 1]) * BLOCK_COUNT[ECL][QRVersion - 1];
+        result[2] = BLOCK_COUNT[ECL][QRVersion - 1] - n;
+        if (result.length == 6) {
+            result[3] = result[0] + 1;
+            result[4] = result[1];
+            result[5] = n;
+        }
+        return result;
+    }
 }
