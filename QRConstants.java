@@ -57,6 +57,7 @@ public interface QRConstants {
                         25, 25, 34, 30, 32, 35, 37, 40, 42, 45, 48, 51, 54, 57, 60, 63, 66, 70, 74, 77, 81 };
         public final static int[][] ERROR_CODES = { NUM_OF_ERROR_CODES_L, NUM_OF_ERROR_CODES_M, NUM_OF_ERROR_CODES_Q,
                         NUM_OF_ERROR_CODES_H };
+        public final static int[][] BLOCK_COUNT = { BLOCK_COUNT_L, BLOCK_COUNT_M, BLOCK_COUNT_Q, BLOCK_COUNT_H };
         public final static int[] P_VALUE[] = { { 3, 2, 1, 1 }, { 2, 0, 0, 0 }, { 1, 0, 0, 0 } };
         public final static int ECL_L = 0;
         public final static int ECL_M = 1;
