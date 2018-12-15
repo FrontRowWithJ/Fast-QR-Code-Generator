@@ -60,6 +60,7 @@ public class QRCode implements QRConstants {
         genVersionData();
         addVersionData();
         addAlignmentPatterns();
+        genMessageBlock(messageCodewords);
     }
 
     private void genFormatData(int ECL, int mpr) {
@@ -147,7 +148,7 @@ public class QRCode implements QRConstants {
     }
 
     public static void main(String[] args) {
-        QRCode qr = new QRCode(1, 0b101, "HI EVERBODY");
+        QRCode qr = new QRCode(1, 0b101, "A");
         qr.export("./", 4);
     }
 
@@ -347,7 +348,7 @@ public class QRCode implements QRConstants {
         int[] byteArray = new int[message.length / 8];
         for (int i = 0; i < message.length; i += 8) {
             int codeword = 0;
-            for (int j = 0; j < 7; j++) {
+            for (int j = 0; j < 8; j++) {
                 codeword |= (message[i + j] % 2) << j;
             }
             byteArray[i / 8] = codeword;
@@ -424,7 +425,7 @@ public class QRCode implements QRConstants {
     }
 
     private String addPadBytes(String message) {
-        int maxBitLength = numOfCodeWords(QRVersion) * 8;
+        int maxBitLength = (numOfCodeWords(QRVersion) - ERROR_CODES[ECL][QRVersion - 1]) * 8;
         if (maxBitLength < message.length())
             throw new IllegalArgumentException("The qr code version is incorrect");
         if (maxBitLength - message.length() <= 4) {
@@ -442,7 +443,7 @@ public class QRCode implements QRConstants {
     // generate final qr message
     private void genMessageBlock(int[] message) {
         int[] blockStructure = getBlockStructure();
-        int[][] messageBlock = new int[BLOCK_COUNT[ECL][QRVersion - 1]];
+        int[][] messageBlock = new int[BLOCK_COUNT[ECL][QRVersion - 1]][];
         for (int i = 0; i < blockStructure[2]; i++) {
             messageBlock[i] = new int[blockStructure[0]];
             System.arraycopy(message, blockStructure[0] * i, messageBlock[i], 0, messageBlock[i].length);
