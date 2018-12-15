@@ -12,9 +12,6 @@ public interface QRConstants {
         public final static String FNC1_FIRST_POS_MODE = "0101";
         public final static String FNC1_LAST_POS_MODE = "1001";
         public final static String TERMINATOR = "0000"; // end of message
-        public final static int VERSION_LOW = 0;
-        public final static int VERSION_MEDIUM = 1;
-        public final static int VERSION_HIGH = 2;
         public final static int[][] CCI_TABLE = { { 10, 9, 8, 8 }, { 12, 11, 16, 10 }, { 14, 13, 16, 12 } };
         public final static int XOR_MASK = 0b101010000010010;
         // defining the format information
