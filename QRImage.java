@@ -5,7 +5,6 @@ import javax.imageio.ImageIO;
 import java.util.Random;
 
 public class QRImage {
-
     public static void main(String... args) {
         Random r = new Random();
         int[][] qrdata = new int[50][50];
@@ -26,7 +25,6 @@ public class QRImage {
                         cArray[k] = QRData[i][j] % 2 == 1 ? 0x00000000 : 0xFFFFFFFF;
                     bi.setRGB(j * moduleSize, i * moduleSize, moduleSize, moduleSize, cArray, 0, 0);
                 }
-
             ImageIO.write(bi, "PNG", new File(directory + "QRImage.png"));
         } catch (Exception e) {
         }
