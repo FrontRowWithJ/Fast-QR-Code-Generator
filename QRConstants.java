@@ -66,4 +66,5 @@ public interface QRConstants {
         public final static String TWO_THREE_SIX = "11101100";
         public final static String SEVENTEEN = "00010001";
         public final static double NATURAL_LOG_2 = Math.log(2);
+        public final static int[] REMAINDER_BITS = new int[40];
 }
