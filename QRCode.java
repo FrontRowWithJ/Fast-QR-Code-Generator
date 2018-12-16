@@ -1,7 +1,5 @@
 import java.util.Arrays;
 
-import jdk.nashorn.internal.runtime.ScriptingFunctions;
-
 public class QRCode implements QRConstants {
     private final int QRVersion;
     private final int QRWidth;
@@ -29,6 +27,12 @@ public class QRCode implements QRConstants {
             }
     }
 
+    static {
+        Arrays.fill(REMAINDER_BITS, 1, 6, 7);
+        Arrays.fill(REMAINDER_BITS, 13, 34, 3);
+        Arrays.fill(REMAINDER_BITS, 20, 27, 4);
+    }
+
     public QRCode(int ECL, int mpr, String message) {
         mode = getMode(message);
         QRVersion = getQRVersion(message, ECL, mode);
@@ -52,15 +56,13 @@ public class QRCode implements QRConstants {
                 row[i] = -1;
         addPositionDetectors();
         addTimingPatterns();
-        int QRDarkModuleI = 4 * QRVersion + 9;
-        int QRDarkModuleJ = 8;
-        QRData[QRDarkModuleI][QRDarkModuleJ] = TRUE_READ_ONLY;
+        QRData[4 * QRVersion + 9][8] = TRUE_READ_ONLY;
         genFormatData(ECL, mpr);
         addFormatData();
         genVersionData();
         addVersionData();
         addAlignmentPatterns();
-        genMessageBlock(messageCodewords);
+        genFinalMessage(messageCodewords);
     }
 
     private void genFormatData(int ECL, int mpr) {
@@ -148,7 +150,8 @@ public class QRCode implements QRConstants {
     }
 
     public static void main(String[] args) {
-        QRCode qr = new QRCode(1, 0b101, "A");
+        QRCode qr = new QRCode(2, 0b101,
+                "EnCt27340039fec0f7ec9db0bbece02a8d75e9e01adee7340039fec0f7ec9db0bbecenGQiUd7wtACv/fdQFVxX6TcGwApCJ6pJqg1/Vb+npw==IwEmS");
         qr.export("./", 4);
     }
 
@@ -305,9 +308,9 @@ public class QRCode implements QRConstants {
         QRImage.genQRImage(QRData, moduleSize, directory);
     }
 
-    private void addCodeWords() {
+    private void addCodeWords(int[] finalMessage) {
         // int[] val = genVal();
-        // int index = val.length - 1
+        int index = finalMessage.length - 1;
         int j = QRWidth - 1;
         for (int k = 0; k < QRWidth / 2; k++) {
             int i = k % 2 == 0 ? QRWidth - 1 : 0;
@@ -316,14 +319,11 @@ public class QRCode implements QRConstants {
                 if (i == TIMING_PATTERN)
                     continue;
                 if (QRData[i][j] > 1)
-                    // QRData[i][j] = val[index--];
-                    System.out.print("");
+                    QRData[i][j] = finalMessage[index--];
                 if (QRData[i][j - 1] > 1)
-                    // QRData[i][j - 1] = val[index--];
-                    System.out.print("");
+                    QRData[i][j - 1] = finalMessage[index--];
             }
             j -= 2;
-
             if (j == TIMING_PATTERN)
                 j -= 1;
         }
@@ -440,21 +440,6 @@ public class QRCode implements QRConstants {
         return message;
     }
 
-    // generate final qr message
-    private void genMessageBlock(int[] message) {
-        int[] blockStructure = getBlockStructure();
-        int[][] messageBlock = new int[BLOCK_COUNT[ECL][QRVersion - 1]][];
-        for (int i = 0; i < blockStructure[2]; i++) {
-            messageBlock[i] = new int[blockStructure[0]];
-            System.arraycopy(message, blockStructure[0] * i, messageBlock[i], 0, messageBlock[i].length);
-        }
-        if (blockStructure.length == 6)
-            for (int i = blockStructure[2]; i < blockStructure[4]; i++) {
-                messageBlock[i] = new int[blockStructure[3]];
-                System.arraycopy(message, blockStructure[3] * i, messageBlock[i], 0, messageBlock[i].length);
-            }
-    }
-
     private int[] getBlockStructure() {
         // array Structure: result[0] = numOfDataCodewords per block, result[1] =
         // numOfErrorCodewords per block, result[2] = number of blocks
@@ -471,5 +456,83 @@ public class QRCode implements QRConstants {
             result[5] = n;
         }
         return result;
+    }
+
+    // generate final qr message
+    private int[] genFinalMessage(int[] message) {
+        int position = 0;
+        int[] blockStructure = getBlockStructure();
+        int[][] messageBlock = new int[BLOCK_COUNT[ECL][QRVersion - 1]][];
+        for (int i = 0; i < blockStructure[2]; i++) {
+            messageBlock[i] = new int[blockStructure[0]];
+            System.arraycopy(message, position, messageBlock[i], 0, messageBlock[i].length);
+            position += blockStructure[0];
+        }
+        if (blockStructure.length == 6)
+            for (int i = blockStructure[2]; i < blockStructure[2] + blockStructure[5]; i++) {
+                messageBlock[i] = new int[blockStructure[3]];
+                System.arraycopy(message, position, messageBlock[i], 0, messageBlock[i].length);
+                position += blockStructure[3];
+            }
+        int[] weavedMessage = new int[message.length];
+        for (int i = 0; i < message.length - blockStructure[5]; i++)
+            weavedMessage[i] = messageBlock[i % messageBlock.length][i / messageBlock.length];
+        for (int i = 0; i < blockStructure[5]; i++)
+            weavedMessage[weavedMessage.length
+                    - (blockStructure[5] - i)] = messageBlock[blockStructure[2] + i][blockStructure[3] - 1];
+        int[] weavedErrorCodewords = genErrorBlock(messageBlock, blockStructure[1]);
+        int[] finalMessage = new int[weavedMessage.length + weavedErrorCodewords.length];
+        System.arraycopy(weavedMessage, 0, finalMessage, 0, weavedMessage.length);
+        System.arraycopy(weavedErrorCodewords, 0, finalMessage, weavedMessage.length, weavedErrorCodewords.length);
+        return finalMessage;
+    }
+
+    private int[] genErrorBlock(int[][] messageBlock, int numOfErrorCodewords) {
+        int[][] errorBlock = new int[messageBlock.length][];
+        for (int i = 0; i < errorBlock.length; i++)
+            errorBlock[i] = Term.toArray(genErrorPolyNomial(messageBlock[i], numOfErrorCodewords));
+        int[] weavedCodewords = new int[numOfErrorCodewords * messageBlock.length];
+        for (int i = 0; i < weavedCodewords.length; i++)
+            weavedCodewords[i] = errorBlock[i % errorBlock.length][i / errorBlock.length];
+        return weavedCodewords;
+    }
+
+    public Term[] genErrorPolyNomial(int[] message, int numOfErrorCodewords) {
+        Term[] messagePolynomial = Term.toPolynomialTemp(message);
+        Term[] generatorPolynomial = Term.genPolynomial(numOfErrorCodewords);
+        messagePolynomial = Term.multiplyX(messagePolynomial, numOfErrorCodewords);
+        int difference = messagePolynomial[0].getXExponent() - generatorPolynomial[0].getXExponent();
+        Term[] shiftedGenPolynomial = Term.multiplyX(generatorPolynomial, difference);
+        shiftedGenPolynomial = Term.multiplyAlpha(shiftedGenPolynomial, messagePolynomial[0].getAlphaExponent());
+        Term[] errorPolynomial = Term.xor(messagePolynomial, shiftedGenPolynomial);
+        for (int i = 0; i < messagePolynomial.length - 1; i++) {
+            difference = errorPolynomial[0].getXExponent() - generatorPolynomial[0].getXExponent();
+            shiftedGenPolynomial = Term.multiplyX(generatorPolynomial, difference);
+            shiftedGenPolynomial = Term.multiplyAlpha(shiftedGenPolynomial, errorPolynomial[0].getAlphaExponent());
+            errorPolynomial = Term.xor(errorPolynomial, shiftedGenPolynomial);
+        }
+        return errorPolynomial;
+    }
+
+    public static int[] toBitArray(int[] message) {
+        // LSB is stored at the lowest index
+        int[] bitArray = new int[message.length * 8];
+        for (int i = 0; i < message.length; i++) {
+            int codeword = message[i];
+            for (int j = 0; j < 8; j++) {
+                bitArray[i * 8 + j] = (codeword & 1) + 2;
+                codeword >>>= 1;
+            }
+        }
+        return bitArray;
+    }
+
+    private void addRemainingBits(int[] finalMessage) {
+        if (REMAINDER_BITS[QRVersion - 1] != 0) {
+            int[] result = new int[finalMessage.length + REMAINDER_BITS[QRVersion - 1]];
+            System.arraycopy(finalMessage, 0, result, 0, result.length);
+            Arrays.fill(result, finalMessage.length, result.length - 1, 2);
+            finalMessage = result;
+        }
     }
 }
