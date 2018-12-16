@@ -188,6 +188,22 @@ public class Term {
         return result;
     }
 
+    public static Term[] genPolynomial(int errorCodeCount) {
+        // index 0 == exponent of x
+        // index 1 == α
+        Term[][] terms = new Term[errorCodeCount][2];
+        for (int i = 0; i < errorCodeCount; i++) {
+            terms[i][0] = new Term(1, 0);
+            terms[i][1] = new Term(0, i);
+        }
+        Term[] result = terms[0];
+        for (int i = 1; i < errorCodeCount; i++) {
+            result = Term.multiplyPolynomials(result, terms[i]);
+            result = Term.simplify(result, i);
+        }
+        return result;
+    }
+
     public static void main(String[] args) {
         Term t = new Term(0, 0);
         System.out.println(prettyPrint(t));
