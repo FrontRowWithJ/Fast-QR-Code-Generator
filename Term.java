@@ -181,6 +181,13 @@ public class Term {
         return message;
     }
 
+    public static int[] toArray(Term[] polynomial){
+        int[] result = new int[polynomial.length];
+        for(int i = 0; i < polynomial.length; i++)
+            result[i] = ALPHA_VALUE[polynomial[i].alphaExponent];
+        return result;
+    }
+
     public static void main(String[] args) {
         Term t = new Term(0, 0);
         System.out.println(prettyPrint(t));
