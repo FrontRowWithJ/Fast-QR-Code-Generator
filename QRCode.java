@@ -62,7 +62,11 @@ public class QRCode implements QRConstants {
         genVersionData();
         addVersionData();
         addAlignmentPatterns();
-        genFinalMessage(messageCodewords);
+        int[] finalMessage = genFinalMessage(messageCodewords);
+        addRemainingBits(finalMessage);
+        finalMessage = toBitArray(finalMessage);
+        addCodeWords(finalMessage);
+        System.out.println("Added the codewords");
     }
 
     private void genFormatData(int ECL, int mpr) {
@@ -309,13 +313,12 @@ public class QRCode implements QRConstants {
     }
 
     private void addCodeWords(int[] finalMessage) {
-        // int[] val = genVal();
         int index = finalMessage.length - 1;
         int j = QRWidth - 1;
         for (int k = 0; k < QRWidth / 2; k++) {
             int i = k % 2 == 0 ? QRWidth - 1 : 0;
             int inc = k % 2 == 0 ? -1 : 1;
-            for (; k % 2 == 0 ? i > -1 : i < QRWidth; k += inc) {
+            for (; k % 2 == 0 ? i > -1 : i < QRWidth; i += inc) {
                 if (i == TIMING_PATTERN)
                     continue;
                 if (QRData[i][j] > 1)
