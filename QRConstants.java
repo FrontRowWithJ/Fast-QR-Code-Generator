@@ -67,4 +67,16 @@ public interface QRConstants {
         public final static String SEVENTEEN = "00010001";
         public final static double NATURAL_LOG_2 = Math.log(2);
         public final static int[] REMAINDER_BITS = new int[40];
+        public final static int I_PLUS_J_MOD_2 = 0b000;
+        public final static int I_MOD_2 = 0b001;
+        public final static int J_MOD_3 = 0b010;
+        public final static int I_PLUS_J_MOD_3 = 0b011;
+        public final static int I_DIV_2_PLUS_J_DIV_3_MOD_2 = 0b100;
+        public final static int I_J_MOD_2_PLUS_I_J_MOD_3 = 0b101;
+        public final static int I_J_MOD_2_PLUS_I_J_MOD_3_MOD_2 = 0b110;
+        public final static int I_PLUS_J_MOD_2_PLUS_I_J_MOD_3_MOD_2 = 0b111;
+        public final static int[] MODULE_PATTERN_1 = { TRUE, FALSE, TRUE, TRUE, TRUE, FALSE, TRUE, FALSE, FALSE, FALSE,
+                        FALSE };
+        public final static int[] MODULE_PATTERN_2 = { FALSE, FALSE, FALSE, FALSE, TRUE, FALSE, TRUE, TRUE, TRUE, FALSE,
+                        TRUE };
 }
