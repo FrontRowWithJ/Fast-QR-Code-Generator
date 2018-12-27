@@ -27,7 +27,6 @@ public class QRImage {
                 for (int j = 0; j < QRData.length; j++) {
                     int[] cArray = new int[moduleSize * moduleSize];
                     Arrays.fill(cArray, QRData[i][j] == -1 ? RED : QRData[i][j] % 2 == 1 ? BLACK : WHITE);
-                    // Arrays.fill(cArray, QRData[i][j] % 2 == 1 ? 0x00000000 : 0xFFFFFFFF);
                     bi.setRGB(j * moduleSize, i * moduleSize, moduleSize, moduleSize, cArray, 0, 0);
                 }
             ImageIO.write(bi, "PNG", new File(directory + "QRImage.png"));
