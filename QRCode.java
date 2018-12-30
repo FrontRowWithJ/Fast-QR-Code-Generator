@@ -32,7 +32,7 @@ public class QRCode implements QRConstants {
         Arrays.fill(REMAINDER_BITS, 13, 34, 3);
         Arrays.fill(REMAINDER_BITS, 20, 27, 4);
     }
-
+    
     // I might scrap alphanumeric mode and byteMode
     public QRCode(int ECL, String message, boolean setToDark) {
         mode = getMode(message);
@@ -59,12 +59,15 @@ public class QRCode implements QRConstants {
         addTimingPatterns();
         QRData[4 * QRVersion + 9][8] = TRUE_READ_ONLY;
         addFormatData(QRData);
-        genVersionData();
-        addVersionData();
+        if (QRVersion >= 7) {
+            genVersionData();
+            addVersionData();
+        }
         addAlignmentPatterns();
+        reverse(messageCodewords);
         int[] finalMessage = genFinalMessage(messageCodewords);
-        addRemainingBits(finalMessage);
         finalMessage = toBitArray(finalMessage);
+        finalMessage = addRemainingBits(finalMessage);
         addCodeWords(finalMessage);
         addMask();
         addWhiteBorder();
@@ -73,11 +76,8 @@ public class QRCode implements QRConstants {
         QRImageTest.genQRImage(QRData, 4, "./", "final_QRImage_Test");
     }
 
-    private void genFormatData(int ECL, int mpr) {
-        int test = mpr & 0xFF;
-        if (test > 7)
-            throw new IllegalArgumentException("mpr must not be greater than 7 (111)");
-        int result = ECL;
+    private void genFormatData(int ECL, int mpr, int[] formatData) {
+        int result = new int[] { 1, 0, 3, 2 }[ECL];
         result <<= 3;
         result |= mpr;
         int data = result;
@@ -88,9 +88,9 @@ public class QRCode implements QRConstants {
             int gx = FORMAT_GX << (highestOneBit(result) - FORMAT_OFFSET);
             result ^= gx;
         } while (highestOneBit(result) >= FORMAT_OFFSET);
-        result |= (data << 10);
+        result |= (data << (FORMAT_OFFSET));
         result ^= XOR_MASK;
-        for (int i = 0; i < 15; i++)
+        for (int i = 0; i < formatData.length; i++)
             formatData[i] = (result >> i) & 1;
     }
 
@@ -122,14 +122,12 @@ public class QRCode implements QRConstants {
     }
 
     private void addVersionData() {
-        if (QRVersion < 7)
-            return;
         for (int i = 0; i < versionData.length; i++)
             QRData[i / 3][(QRWidth - 11) + i % 3] = QRData[i % 3 + QRWidth - 11][i / 3] = versionData[i];
     }
 
     public static void main(String[] args) {
-        QRCode qr = new QRCode(1, args.length == 0 ? "http://en.m.wikipedia.org" : args[0], false);
+        QRCode qr = new QRCode(2, args.length == 0 ? "HELLO WORLD" : args[0], false);
         qr.export("./", 4);
     }
 
@@ -271,8 +269,6 @@ public class QRCode implements QRConstants {
                     continue;
                 if (QRData[i][j] != TRUE_READ_ONLY && QRData[i][j] != FALSE_READ_ONLY)
                     QRData[i][j] = finalMessage[index--];
-                    if(index == -1)
-                        return;
                 if (QRData[i][j - 1] != TRUE_READ_ONLY && QRData[i][j - 1] != FALSE_READ_ONLY)
                     QRData[i][j - 1] = finalMessage[index--];
             }
@@ -296,8 +292,7 @@ public class QRCode implements QRConstants {
 
     public int[] coalesceBitsToBytes(int[] message) {
         if (message.length % 8 != 0)
-            throw new IllegalArgumentException(
-                    "The meessage array must be divisible by eight (" + message.length + ")");
+            throw new IllegalArgumentException("The message array must be divisible by eight (" + message.length + ")");
         int[] byteArray = new int[message.length / 8];
         for (int i = 0; i < message.length; i += 8) {
             int codeword = 0;
@@ -384,7 +379,7 @@ public class QRCode implements QRConstants {
             message += new String(new char[maxBitLength - message.length()]).replace('\0', '0');
             return message;
         } else
-            message += "0000";
+            message += TERMINATOR;
         message += new String(new char[(8 - message.length() % 8) % 8]).replace('\0', '0');
         int l = (maxBitLength - message.length()) / 8;
         for (int i = 0; i < l; i++)
@@ -398,8 +393,8 @@ public class QRCode implements QRConstants {
         int numOfCodeWords = numOfCodeWords(QRVersion);
         int[] result = new int[numOfCodeWords % BLOCK_COUNT[ECL][QRVersion - 1] == 0 ? 3 : 6];
         result[0] = (numOfCodeWords - ERROR_CODES[ECL][QRVersion - 1]) / BLOCK_COUNT[ECL][QRVersion - 1];
-        result[1] = numOfCodeWords / BLOCK_COUNT[ECL][QRVersion - 1] - result[0]
-                - (QRVersion < 4 ? P_VALUE[QRVersion - 1][ECL] : 0);
+        result[1] = numOfCodeWords / BLOCK_COUNT[ECL][QRVersion - 1] - result[0];
+        // - (QRVersion < 4 ? P_VALUE[QRVersion - 1][ECL] : 0);
         int n = numOfCodeWords - (numOfCodeWords / BLOCK_COUNT[ECL][QRVersion - 1]) * BLOCK_COUNT[ECL][QRVersion - 1];
         result[2] = BLOCK_COUNT[ECL][QRVersion - 1] - n;
         if (result.length == 6) {
@@ -433,8 +428,8 @@ public class QRCode implements QRConstants {
             for (int i = 0; i < blockStructure[5]; i++)
                 weavedMessage[weavedMessage.length
                         - (blockStructure[5] - i)] = messageBlock[blockStructure[2] + i][blockStructure[3] - 1];
-        } else 
-            for(int i = 0; i < weavedMessage.length; i++)
+        } else
+            for (int i = 0; i < weavedMessage.length; i++)
                 weavedMessage[i] = messageBlock[i % messageBlock.length][i / messageBlock.length];
         int[] weavedErrorCodewords = genErrorBlock(messageBlock, blockStructure[1]);
         int[] finalMessage = new int[weavedMessage.length + weavedErrorCodewords.length];
@@ -472,6 +467,7 @@ public class QRCode implements QRConstants {
 
     public static int[] toBitArray(int[] message) {
         // LSB is stored at the lowest index
+        reverse(message);
         int[] bitArray = new int[message.length * 8];
         for (int i = 0; i < message.length; i++) {
             int codeword = message[i];
@@ -483,13 +479,14 @@ public class QRCode implements QRConstants {
         return bitArray;
     }
 
-    private void addRemainingBits(int[] finalMessage) {
+    private int[] addRemainingBits(int[] finalMessage) {
         if (REMAINDER_BITS[QRVersion - 1] != 0) {
             int[] result = new int[finalMessage.length + REMAINDER_BITS[QRVersion - 1]];
-            System.arraycopy(finalMessage, 0, result, 0, finalMessage.length);
-            Arrays.fill(result, finalMessage.length, result.length - 1, 2);
-            finalMessage = result;
+            System.arraycopy(finalMessage, 0, result, REMAINDER_BITS[QRVersion - 1], finalMessage.length);
+            Arrays.fill(result, 0, REMAINDER_BITS[QRVersion - 1], TRUE);
+            return result;
         }
+        return finalMessage;
     }
 
     private void addSeparators() {
@@ -501,86 +498,78 @@ public class QRCode implements QRConstants {
     }
 
     private void addMask() {
+        int correct_mpr = 0;
+        int mpr = 0;
         int[][] QRDataCopy = QRData.clone();
-        int[][] QRFinal = QRData.clone();
         int matrixPenalty = Integer.MAX_VALUE;
         for (int i = 0; i < 8; i++) {
             switch (i) {
             case I_PLUS_J_MOD_2:
-                genFormatData(ECL, I_PLUS_J_MOD_2);
-                addFormatData(QRDataCopy);
+                mpr = I_PLUS_J_MOD_2;
                 for (int row = 0; row < QRDataCopy.length; row++)
-                    for (int column = row % 2; column < QRDataCopy.length; column += 2)
-                        if (QRDataCopy[row][column] > 1)
-                            QRDataCopy[row][column] ^= 1;
+                for (int column = row % 2; column < QRDataCopy.length; column += 2)
+                if (QRDataCopy[row][column] > 1)
+                QRDataCopy[row][column] ^= 1;
                 break;
             case I_MOD_2:
-                genFormatData(ECL, I_MOD_2);
-                addFormatData(QRDataCopy);
+                mpr = I_MOD_2;
                 for (int row = 0; row < QRDataCopy.length; row += 2)
                     for (int column = 0; column < QRDataCopy.length; column++)
                         if (QRDataCopy[row][column] > 1)
                             QRDataCopy[row][column] ^= 1;
                 break;
-
             case J_MOD_3:
-                genFormatData(ECL, J_MOD_3);
-                addFormatData(QRDataCopy);
+                mpr = J_MOD_3;
                 for (int row = 0; row < QRDataCopy.length; row++)
                     for (int column = 0; column < QRDataCopy.length; column += 3)
                         if (QRDataCopy[row][column] > 1)
                             QRDataCopy[row][column] ^= 1;
                 break;
             case I_PLUS_J_MOD_3:
-                genFormatData(ECL, I_PLUS_J_MOD_3);
-                addFormatData(QRDataCopy);
+                mpr = I_PLUS_J_MOD_3;
                 for (int row = 0; row < QRDataCopy.length; row++)
                     for (int column = new int[] { 0, 2, 1 }[row % 3]; column < QRDataCopy.length; column += 3)
                         if (QRDataCopy[row][column] > 1)
                             QRDataCopy[row][column] ^= 1;
                 break;
             case I_DIV_2_PLUS_J_DIV_3_MOD_2:
-                genFormatData(ECL, I_DIV_2_PLUS_J_DIV_3_MOD_2);
-                addFormatData(QRDataCopy);
+                mpr = I_DIV_2_PLUS_J_DIV_3_MOD_2;
                 for (int row = 0; row < QRDataCopy.length; row++)
                     for (int column = 0; column < QRDataCopy.length; column++)
                         if (QRDataCopy[row][column] > 1)
                             QRDataCopy[row][column] ^= (row / 2 + column / 3) % 2 ^ 1;
                 break;
             case I_J_MOD_2_PLUS_I_J_MOD_3:
-                genFormatData(ECL, I_J_MOD_2_PLUS_I_J_MOD_3);
-                addFormatData(QRDataCopy);
+                mpr = I_J_MOD_2_PLUS_I_J_MOD_3;
                 for (int row = 0; row < QRDataCopy.length; row++)
                     for (int column = 0; column < QRDataCopy.length; column++)
                         if (QRDataCopy[row][column] > 1)
                             QRDataCopy[row][column] ^= row * column % 2 + row * column % 3 == 0 ? 1 : 0;
                 break;
-
             case I_J_MOD_2_PLUS_I_J_MOD_3_MOD_2:
-                genFormatData(ECL, I_J_MOD_2_PLUS_I_J_MOD_3_MOD_2);
-                addFormatData(QRDataCopy);
+                mpr = I_J_MOD_2_PLUS_I_J_MOD_3_MOD_2;
                 for (int row = 0; row < QRDataCopy.length; row++)
                     for (int column = 0; column < QRDataCopy.length; column++)
                         if (QRDataCopy[row][column] > 1)
                             QRDataCopy[row][column] ^= (row * column % 2 + row * column % 3) % 2 ^ 1;
                 break;
             case I_PLUS_J_MOD_2_PLUS_I_J_MOD_3_MOD_2:
-                genFormatData(ECL, I_PLUS_J_MOD_2_PLUS_I_J_MOD_3_MOD_2);
-                addFormatData(QRDataCopy);
+                mpr = I_PLUS_J_MOD_2_PLUS_I_J_MOD_3_MOD_2;
                 for (int row = 0; row < QRDataCopy.length; row++)
                     for (int column = 0; column < QRDataCopy.length; column++)
                         if (QRDataCopy[row][column] > 1)
                             QRDataCopy[row][column] ^= ((row + column % 2) + row * column % 3) % 2 ^ 1;
-
             }
             int penalty = getMatrixPenalty(QRDataCopy);
             if (penalty < matrixPenalty) {
                 matrixPenalty = penalty;
-                QRFinal = QRDataCopy;
+                QRData = QRDataCopy;
+                correct_mpr = mpr;
             }
             QRDataCopy = QRData.clone();
+            genFormatData(ECL, correct_mpr, formatData);
+            addFormatData(QRData);
         }
-        QRData = QRFinal;
     }
 
     private static int getMatrixPenalty(int[][] QRData) {
@@ -695,5 +684,13 @@ public class QRCode implements QRConstants {
         for (int i = 0; i < QRData.length; i++)
             for (int j = 0; j < QRData.length; j++)
                 QRData[i][j] ^= 1;
+    }
+
+    public static void reverse(int[] array) {
+        for (int i = 0; i < array.length / 2; i++) {
+            int tmp = array[i];
+            array[i] = array[array.length - 1 - i];
+            array[array.length - 1 - i] = tmp;
+        }
     }
 }
