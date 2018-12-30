@@ -1,8 +1,8 @@
 import java.util.ArrayList;
 
 public class Term {
-    private final static int[] ALPHA_VALUE_EXPONENT = new int[256];
-    private final static int[] ALPHA_VALUE = new int[256];
+    private static int[] ALPHA_VALUE_EXPONENT = new int[257];
+    private final static int[] ALPHA_VALUE = new int[257];
     private final static String[] SUPERSCRIPT = { "\u2070", "\u00B9", "\u00B2", "\u00b3", "\u2074", "\u2075", "\u2076",
             "\u2077", "\u2078", "\u2079" };
     // x refers to the exponent of x
@@ -16,6 +16,7 @@ public class Term {
             ALPHA_VALUE[i] = alpha;
         }
         ALPHA_VALUE[255] = 1;
+        ALPHA_VALUE_EXPONENT[0] = 256;
     }
 
     public Term(int xExponent, int alphaExponent) {
@@ -181,9 +182,9 @@ public class Term {
         return message;
     }
 
-    public static int[] toArray(Term[] polynomial){
+    public static int[] toArray(Term[] polynomial) {
         int[] result = new int[polynomial.length];
-        for(int i = 0; i < polynomial.length; i++)
+        for (int i = 0; i < polynomial.length; i++)
             result[i] = ALPHA_VALUE[polynomial[i].alphaExponent];
         return result;
     }
@@ -202,10 +203,5 @@ public class Term {
             result = Term.simplify(result, i);
         }
         return result;
-    }
-
-    public static void main(String[] args) {
-        Term t = new Term(0, 0);
-        System.out.println(prettyPrint(t));
     }
 }
