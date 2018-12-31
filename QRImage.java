@@ -8,7 +8,7 @@ import java.util.Random;
 public class QRImage {
     private final static int BLACK = 0x00000000;
     private final static int WHITE = 0xFFFFFFFF;
-    private final static int RED   = 0x00FF0000;
+    private final static int RED = 0x00FF0000;
 
     public static void main(String... args) {
         Random r = new Random();
@@ -16,10 +16,10 @@ public class QRImage {
         for (int i = 0; i < qrdata[0].length; i++)
             for (int j = 0; j < qrdata.length; j++)
                 qrdata[i][j] = r.nextInt();
-        genQRImage(qrdata, 2, "./");
+        genQRImage(qrdata, 2, "./", "QRImage");
     }
 
-    public static void genQRImage(int[][] QRData, int moduleSize, String directory) {
+    public static void genQRImage(int[][] QRData, int moduleSize, String directory, String fileName) {
         try {
             int side = QRData.length;
             BufferedImage bi = new BufferedImage(side * moduleSize, side * moduleSize, BufferedImage.TYPE_INT_RGB);
@@ -29,8 +29,15 @@ public class QRImage {
                     Arrays.fill(cArray, QRData[i][j] == -1 ? RED : QRData[i][j] % 2 == 1 ? BLACK : WHITE);
                     bi.setRGB(j * moduleSize, i * moduleSize, moduleSize, moduleSize, cArray, 0, 0);
                 }
-            ImageIO.write(bi, "PNG", new File(directory + "QRImage.png"));
+            ImageIO.write(bi, "PNG", new File(directory + correctFileName(fileName) + ".png"));
         } catch (Exception e) {
         }
+    }
+
+    private static String correctFileName(String fileName) {
+        if (fileName.substring(fileName.length() - 4).equals(".png"))
+            return fileName.substring(0, fileName.length() - 4);
+        else
+            return fileName;
     }
 }
