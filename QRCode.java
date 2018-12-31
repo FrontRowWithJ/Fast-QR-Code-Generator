@@ -32,7 +32,7 @@ public class QRCode implements QRConstants {
         Arrays.fill(REMAINDER_BITS, 13, 34, 3);
         Arrays.fill(REMAINDER_BITS, 20, 27, 4);
     }
-    
+
     // I might scrap alphanumeric mode and byteMode
     public QRCode(int ECL, String message, boolean setToDark) {
         mode = getMode(message);
@@ -73,7 +73,6 @@ public class QRCode implements QRConstants {
         addWhiteBorder();
         if (setToDark)
             setToDark();
-        QRImageTest.genQRImage(QRData, 4, "./", "final_QRImage_Test");
     }
 
     private void genFormatData(int ECL, int mpr, int[] formatData) {
@@ -127,7 +126,9 @@ public class QRCode implements QRConstants {
     }
 
     public static void main(String[] args) {
-        QRCode qr = new QRCode(2, args.length == 0 ? "HELLO WORLD" : args[0], false);
+        QRCode qr = new QRCode(2, "EnCt271893db6be7d7205113199ebc1e33d82be96829e71893db6be7d7205113199eb1DCrm3UNLAE" +
+"TNpkRKlysFVshrG75K9isfMRM/lKLCiDaASufwtoAftbxAGB/gXqGaTTxwbQKBUzu2p6DW1QdMklqTgm" +
+        "NMUYKTc/boRLQXe9RjZ4=IwEmS", false);
         qr.export("./", 4);
     }
 
@@ -500,16 +501,17 @@ public class QRCode implements QRConstants {
     private void addMask() {
         int correct_mpr = 0;
         int mpr = 0;
-        int[][] QRDataCopy = QRData.clone();
+        int[][] QRDataOriginal = copyOf(QRData);
+        int[][] QRDataCopy = copyOf(QRData);
         int matrixPenalty = Integer.MAX_VALUE;
         for (int i = 0; i < 8; i++) {
             switch (i) {
             case I_PLUS_J_MOD_2:
                 mpr = I_PLUS_J_MOD_2;
                 for (int row = 0; row < QRDataCopy.length; row++)
-                for (int column = row % 2; column < QRDataCopy.length; column += 2)
-                if (QRDataCopy[row][column] > 1)
-                QRDataCopy[row][column] ^= 1;
+                    for (int column = row % 2; column < QRDataCopy.length; column += 2)
+                        if (QRDataCopy[row][column] > 1)
+                            QRDataCopy[row][column] ^= 1;
                 break;
             case I_MOD_2:
                 mpr = I_MOD_2;
@@ -560,16 +562,25 @@ public class QRCode implements QRConstants {
                         if (QRDataCopy[row][column] > 1)
                             QRDataCopy[row][column] ^= ((row + column % 2) + row * column % 3) % 2 ^ 1;
             }
+            genFormatData(ECL, mpr, formatData);
+            addFormatData(QRDataCopy);
             int penalty = getMatrixPenalty(QRDataCopy);
             if (penalty < matrixPenalty) {
                 matrixPenalty = penalty;
-                QRData = QRDataCopy;
+                QRData = copyOf(QRDataCopy);
                 correct_mpr = mpr;
             }
-            QRDataCopy = QRData.clone();
-            genFormatData(ECL, correct_mpr, formatData);
-            addFormatData(QRData);
+            QRDataCopy = copyOf(QRDataOriginal);
         }
+        genFormatData(ECL, correct_mpr, formatData);
+        addFormatData(QRData);
+    }
+
+    private static int[][] copyOf(int[][] matrix) {
+        int[][] copy = new int[matrix.length][matrix.length];
+        for (int i = 0; i < matrix.length; i++)
+            System.arraycopy(matrix[i], 0, copy[i], 0, matrix.length);
+        return copy;
     }
 
     private static int getMatrixPenalty(int[][] QRData) {
@@ -583,11 +594,11 @@ public class QRCode implements QRConstants {
 
     private static int evaluateConsecutiveModulesPenalty(int[][] QRData) {
         int penalty = 0;
-        for (int j = 1; j < QRData.length; j++) {
+        for (int i = 0; i < QRData.length; i++) {
             int numOfSimilarModulesVertical = 1;
             int numOfSimilarModulesHorizontal = 1;
-            for (int i = 1; i < QRData.length; i++) {
-                if (QRData[i][j] % 2 == QRData[i][j - 1] % 2)
+            for (int j = 1; j < QRData.length; j++) {
+                if (QRData[j - 1][i] % 2 == QRData[j][i] % 2)
                     numOfSimilarModulesVertical++;
                 else
                     numOfSimilarModulesVertical = 1;
@@ -595,13 +606,13 @@ public class QRCode implements QRConstants {
                     penalty += 3;
                 else if (numOfSimilarModulesVertical > 5)
                     penalty += 1;
-                if (QRData[j][i] % 2 == QRData[j][i - 1] % 2)
+                if (QRData[i][j] % 2 == QRData[i][j - 1] % 2)
                     numOfSimilarModulesHorizontal++;
                 else
                     numOfSimilarModulesHorizontal = 1;
                 if (numOfSimilarModulesHorizontal == 5)
                     penalty += 3;
-                else if (numOfSimilarModulesHorizontal > 5)
+                if (numOfSimilarModulesHorizontal > 5)
                     penalty += 1;
             }
         }
@@ -624,7 +635,7 @@ public class QRCode implements QRConstants {
             for (int j = 0; j < QRData.length - MODULE_PATTERN_1.length; j++) {
                 int tally = 0;
                 while (tally < MODULE_PATTERN_1.length) {
-                    if (QRData[i][j + tally] % 2 == MODULE_PATTERN_1[tally])
+                    if (QRData[i][j + tally] % 2 == MODULE_PATTERN_1[tally] % 2)
                         tally++;
                     else
                         break;
@@ -633,7 +644,7 @@ public class QRCode implements QRConstants {
                     penalty += 40;
                 tally = 0;
                 while (tally < MODULE_PATTERN_2.length) {
-                    if (QRData[i][j + tally] % 2 == MODULE_PATTERN_2[tally])
+                    if (QRData[i][j + tally] % 2 == MODULE_PATTERN_2[tally] % 2)
                         tally++;
                     else
                         break;
@@ -642,7 +653,7 @@ public class QRCode implements QRConstants {
                     penalty += 40;
                 tally = 0;
                 while (tally < MODULE_PATTERN_1.length) {
-                    if (QRData[i + tally][j] % 2 == MODULE_PATTERN_1[tally])
+                    if (QRData[j + tally][i] % 2 == MODULE_PATTERN_1[tally] % 2)
                         tally++;
                     else
                         break;
@@ -651,7 +662,7 @@ public class QRCode implements QRConstants {
                     penalty += 40;
                 tally = 0;
                 while (tally < MODULE_PATTERN_2.length) {
-                    if (QRData[i + tally][j] % 2 == MODULE_PATTERN_2[tally])
+                    if (QRData[j + tally][i] % 2 == MODULE_PATTERN_2[tally] % 2)
                         tally++;
                     else
                         break;
