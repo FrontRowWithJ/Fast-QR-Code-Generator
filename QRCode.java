@@ -187,8 +187,8 @@ public class QRCode implements QRConstants {
         return bitStream;
     }
 
-    public void export(String directory, int moduleSize) {
-        QRImage.genQRImage(QRData, moduleSize, directory);
+    public void export(String directory, int moduleSize, String fileName) {
+        QRImage.genQRImage(QRData, moduleSize, directory, fileName);
     }
 
     private void addCodeWords(int[] finalMessage) {
