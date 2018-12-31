@@ -3,7 +3,6 @@ import java.util.Arrays;
 public class QRCode implements QRConstants {
     private final int QRVersion;
     private final int QRWidth;
-    private final String mode;
     private final int ECL;
     // number of format and verion information modules
     private int[] formatData = new int[15];
@@ -17,7 +16,6 @@ public class QRCode implements QRConstants {
                 a >>>= 1;
             }
     }
-
     static {
         long a = 0b1111110001101011000111111;
         for (int i = 0; i < ALIGNMENT_PATTERN.length; i++)
@@ -26,7 +24,6 @@ public class QRCode implements QRConstants {
                 a >>>= 1;
             }
     }
-
     static {
         Arrays.fill(REMAINDER_BITS, 1, 6, 7);
         Arrays.fill(REMAINDER_BITS, 13, 34, 3);
@@ -35,20 +32,9 @@ public class QRCode implements QRConstants {
 
     // I might scrap alphanumeric mode and byteMode
     public QRCode(int ECL, String message, boolean setToDark) {
-        mode = getMode(message);
-        QRVersion = getQRVersion(message, ECL, mode);
+        QRVersion = getQRVersion(message, ECL);
         this.ECL = ECL;
-        int[] messageBitStream = null;
-        switch (mode) {
-        case ALPHANUMERIC_MODE:
-            messageBitStream = alphanumericMode(message);
-            break;
-        case NUMERIC_MODE:
-            messageBitStream = numericMode(message);
-            break;
-        case BYTE_MODE:
-            messageBitStream = byteMode(message);
-        }
+        int[] messageBitStream = byteMode(message);
         int[] messageCodewords = coalesceBitsToBytes(messageBitStream);
         QRWidth = 17 + QRVersion * 4;
         QRData = new int[QRWidth][QRWidth];
@@ -125,13 +111,6 @@ public class QRCode implements QRConstants {
             QRData[i / 3][(QRWidth - 11) + i % 3] = QRData[i % 3 + QRWidth - 11][i / 3] = versionData[i];
     }
 
-    public static void main(String[] args) {
-        QRCode qr = new QRCode(2, "EnCt271893db6be7d7205113199ebc1e33d82be96829e71893db6be7d7205113199eb1DCrm3UNLAE" +
-"TNpkRKlysFVshrG75K9isfMRM/lKLCiDaASufwtoAftbxAGB/gXqGaTTxwbQKBUzu2p6DW1QdMklqTgm" +
-        "NMUYKTc/boRLQXe9RjZ4=IwEmS", false);
-        qr.export("./", 4);
-    }
-
     private void addPositionDetectors() {
         copyToQRCode(0, 0, POSITION_DETECTOR);
         copyToQRCode(0, QRData[0].length - PD_WIDTH, POSITION_DETECTOR);
@@ -191,53 +170,6 @@ public class QRCode implements QRConstants {
                 copyToQRCode(patternCoords[i] - 2, patternCoords[j] - 2, ALIGNMENT_PATTERN);
             }
         }
-    }
-
-    private int[] numericMode(String inputData) {
-        String result = "";
-        int quotient = inputData.length() / 3;
-        int remainder = inputData.length() % 3;
-        for (int i = 0; i < quotient * 3; i += 3)
-            result += String.format("%1$10s", Integer.toBinaryString(Integer.parseInt(inputData.substring(i, i + 3))))
-                    .replace(" ", "0");
-        if (remainder > 0)
-            result += Integer.toBinaryString(Integer.parseInt(inputData.substring(quotient * 3, inputData.length())))
-                    .replace(" ", "0");
-        int ccBitCount = QRVersion < 10 ? 10 : QRVersion < 27 ? 12 : 14;
-        String characterCount = String.format("%1$" + ccBitCount + "s", Integer.toBinaryString(inputData.length()))
-                .replace(" ", "0");
-        result = NUMERIC_MODE + characterCount + result;
-        result = addPadBytes(result);
-        int[] bitStream = new int[result.length()];
-        for (int i = 0; i < bitStream.length; i++)
-            bitStream[i] = result.charAt(result.length() - i - 1) == '1' ? TRUE : FALSE;
-        return bitStream;
-    }
-
-    private int[] alphanumericMode(String inputData) {
-        String result = "";
-        int quotient = inputData.length() / 2;
-        int remainder = inputData.length() % 2;
-        for (int i = 0; i < quotient * 2; i += 2) {
-            String group = inputData.substring(i, i + 2);
-            int decimalValue = ALPHANUMERIC_TABLE.indexOf(group.charAt(0)) * 45
-                    + ALPHANUMERIC_TABLE.indexOf(group.charAt(1));
-            result += String.format("%1$11s", Integer.toBinaryString(decimalValue)).replace(" ", "0");
-        }
-
-        if (remainder > 0) {
-            int decimalValue = ALPHANUMERIC_TABLE.indexOf(inputData.charAt(inputData.length() - 1));
-            result += String.format("%1$6s", Integer.toBinaryString(decimalValue)).replace(" ", "0");
-        }
-        int ccBitCount = QRVersion < 10 ? 9 : QRVersion < 27 ? 11 : 13;
-        String characterCount = String.format("%1$" + ccBitCount + "s", Integer.toBinaryString(inputData.length()))
-                .replace(" ", "0");
-        result = ALPHANUMERIC_MODE + characterCount + result;
-        result = addPadBytes(result);
-        int[] bitStream = new int[result.length()];
-        for (int i = 0; i < bitStream.length; i++)
-            bitStream[i] = result.charAt(result.length() - i - 1) == '1' ? TRUE : FALSE;
-        return bitStream;
     }
 
     private int[] byteMode(String inputData) {
@@ -304,62 +236,15 @@ public class QRCode implements QRConstants {
         return byteArray;
     }
 
-    private String getMode(String message) {
-        String mode = "";
-        boolean isByteMode, isAlphaNumericMode;
-        isByteMode = isAlphaNumericMode = false;
-        for (int i = 0; i < message.length(); i++) {
-            char character = message.charAt(i);
-            if (!isAlphaNumericMode && character >= 48 && character <= 57) {
-                mode = NUMERIC_MODE;
-            } else if (!isByteMode && ALPHANUMERIC_TABLE.contains("" + character)) {
-                isAlphaNumericMode = true;
-                mode = ALPHANUMERIC_MODE;
-            } else {
-                mode = BYTE_MODE;
-                break;
-            }
-        }
-        return mode;
-    }
-
-    public int getQRVersion(String message, int ECL, String mode) {
-        // only numbers = numeric mode
-        // numbers and characters = alphanumeric mode
-        // more than that = byte mode
+    public int getQRVersion(String message, int ECL) {
         int messageLength = -1;
-        if (ECL < 0 || ECL > 3)
-            throw new IllegalArgumentException("The ECL version must be a value between 0 and 3 inclusive");
         if (message.length() == 0)
             return 1;
-        switch (mode) {
-        case NUMERIC_MODE:
-            messageLength = 4 + (message.length() < 1024 ? 10
-                    : message.length() < 4096 ? 12 : message.length() < 16384 ? 14 : -1);
-            if (messageLength == 3)
-                throw new IllegalArgumentException(String.format(
-                        "The string is too long (%d). The maximum length is 16383 characters", message.length()));
-            messageLength += 10 * (message.length() % 3);
-            int[] yeet = new int[] { 0, 4, 7 };
-            messageLength += yeet[(message.length() % 3)];
-            messageLength = messageLength % 8 == 0 ? messageLength / 8 : messageLength / 8 + 1;
-            break;
-        case ALPHANUMERIC_MODE:
-            messageLength = message.length() < 512 ? 9
-                    : message.length() < 2048 ? 11 : message.length() < 8192 ? 13 : -1;
-            if (messageLength == -1)
-                throw new IllegalArgumentException(String.format(
-                        "The string is too long (%d). The maximum length is 8191 characters", message.length()));
-            messageLength += 4 + 11 * (message.length() / 2) + 6 * (message.length() % 2);
-            break;
-        case BYTE_MODE:
-            messageLength = message.length() < 256 ? 8
-                    : message.length() < 1024 ? 10 : message.length() < 4096 ? 12 : -1;
-            if (messageLength == -1)
-                throw new IllegalArgumentException(String.format(
-                        "The string is too long (%d). The maximum length is 4095 characters", message.length()));
-            messageLength += 4 + 8 * message.length();
-        }
+        messageLength = message.length() < 256 ? 8 : message.length() < 1024 ? 10 : message.length() < 4096 ? 12 : -1;
+        if (messageLength == -1)
+            throw new IllegalArgumentException(String
+                    .format("The string is too long (%d). The maximum length is 4095 characters", message.length()));
+        messageLength += 4 + 8 * message.length();
         int byteLength = messageLength % 8 == 0 ? messageLength / 8 : messageLength / 8 + 1;
         for (int i = 1; i <= 40; i++) {
             int c = 0;
