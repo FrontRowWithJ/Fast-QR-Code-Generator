@@ -3,38 +3,19 @@ public interface QRConstants {
         public final static int TRUE_READ_ONLY = 1;
         public final static int FALSE = 2;
         public final static int TRUE = 3;
-        public final static String EC1_MODE = "0111";
-        public final static String NUMERIC_MODE = "0001";
-        public final static String ALPHANUMERIC_MODE = "0010";
         public final static String BYTE_MODE = "0100";
-        public final static String KANJI_MODE = "1000";
-        public final static String STRUCTURED_APPEND_MODE = "0011";
-        public final static String FNC1_FIRST_POS_MODE = "0101";
-        public final static String FNC1_LAST_POS_MODE = "1001";
         public final static String TERMINATOR = "0000"; // end of message
         public final static int[][] CCI_TABLE = { { 10, 9, 8, 8 }, { 12, 11, 16, 10 }, { 14, 13, 16, 12 } };
         public final static int XOR_MASK = 0b101010000010010;
         // defining the format information
         // ECL = Error Correction Level
-        public final static int ECL_INDEX = 14;
-        public final static int ECL_LENGTH = 2;
-        public final static int MPR_INDEX = 12;
-        public final static int MPR_LENGTH = 3;
         public final static int FORMAT_GX = 0b10100110111;
         public final static int VERSION_GX = 0b1111100100101;
         public final static int FORMAT_OFFSET = 10;
         public final static int PD_WIDTH = 7;
         public final static int[][] POSITION_DETECTOR = new int[PD_WIDTH][PD_WIDTH];
         public final static int[][] ALIGNMENT_PATTERN = new int[5][5];
-        public final static String ALPHANUMERIC_TABLE = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
-        public final static int[] PAD_BYTE_1 = { FALSE, FALSE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE };
-        public final static int[] PAD_BYTE_2 = { TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE };
         public final static int TIMING_PATTERN = 6;
-        // public final static int[] ERROR_CODEWORD_COUNT_L = { 19, 34, 55, 80, 108,
-        // 136, 156, 194, 232, 274, 370, 428,
-        // 461, 523, 589, 647, 721, 795, 861, 932, 1006, 1094, 1174, 1276, 1370, 1468,
-        // 1531, 1631, 1735,
-        // 1843, 1955, 2071, 2191, 2306, 2434, 2566, 2702, 2812, 2956 };
         public final static int[] NUM_OF_ERROR_CODES_L = { 7, 10, 15, 20, 26, 36, 40, 48, 60, 72, 80, 96, 104, 120, 132,
                         144, 168, 180, 196, 224, 224, 252, 270, 300, 312, 336, 360, 390, 420, 450, 480, 510, 540, 570,
                         570, 600, 630, 660, 720, 750 };
