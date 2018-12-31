@@ -3,8 +3,6 @@ import java.util.ArrayList;
 public class Term {
     private static int[] ALPHA_VALUE_EXPONENT = new int[257];
     private final static int[] ALPHA_VALUE = new int[257];
-    private final static String[] SUPERSCRIPT = { "\u2070", "\u00B9", "\u00B2", "\u00b3", "\u2074", "\u2075", "\u2076",
-            "\u2077", "\u2078", "\u2079" };
     // x refers to the exponent of x
     private int xExponent;
     // alpha refers to the exponent of α
@@ -103,34 +101,6 @@ public class Term {
         return result;
     }
 
-    public static String prettyPrint(Term... polynomial) {
-        String result = "";
-        for (int i = 0; i < polynomial.length; i++)
-            result += "α" + toSuperscript(polynomial[i].alphaExponent) + "x" + toSuperscript(polynomial[i].xExponent)
-                    + " + ";
-        return result.substring(0, result.length() - 3);
-    }
-
-    public static String condensedPrettyPrint(Term... polynomial) {
-        String result = "";
-        for (int i = 0; i < polynomial.length; i++) {
-            String alpha = polynomial[i].alphaExponent == 0 ? "" : "α" + toSuperscript(polynomial[i].alphaExponent);
-            String x = polynomial[i].xExponent == 0 ? "" : "x" + toSuperscript(polynomial[i].xExponent);
-            result += alpha + x + " + ";
-        }
-        return result.substring(0, result.length() - 3);
-    }
-
-    public static String NumericPrettyPrint(Term... polynomial) {
-        String result = "";
-        for (int i = 0; i < polynomial.length; i++) {
-            String alpha = polynomial[i].alphaExponent == 0 ? "" : "" + ALPHA_VALUE[polynomial[i].alphaExponent];
-            String x = polynomial[i].xExponent == 0 ? "" : "x" + toSuperscript(polynomial[i].xExponent);
-            result += alpha + x + " + ";
-        }
-        return result.substring(0, result.length() - 3);
-    }
-
     public static Term[] toPolynomial(int[] message) {
         Term[] polynomial = new Term[message.length / 8];
         for (int i = 0; i < message.length; i += 8) {
@@ -149,17 +119,6 @@ public class Term {
         for (int i = 0; i < polynomial.length; i++)
             polynomial[i] = new Term(polynomial.length - i - 1, ALPHA_VALUE_EXPONENT[message[i]]);
         return polynomial;
-    }
-
-    private static String toSuperscript(int number) {
-        String result = "";
-        int total = number;
-        int m = 10;
-        do {
-            result = SUPERSCRIPT[total % m] + result;
-            total /= 10;
-        } while (total != 0);
-        return result;
     }
 
     public int getAlphaExponent() {
