@@ -1,3 +1,4 @@
+package java;
 public interface QRConstants {
         public final static int FALSE_READ_ONLY = 0;
         public final static int TRUE_READ_ONLY = 1;

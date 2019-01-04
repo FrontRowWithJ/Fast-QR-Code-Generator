@@ -1,3 +1,4 @@
+package java;
 import java.util.Random;
 
 public class RandomString {
