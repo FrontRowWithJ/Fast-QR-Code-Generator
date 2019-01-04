@@ -1,5 +1,3 @@
-import java.util.ArrayList;
-
 public class Term {
     private static int[] ALPHA_VALUE_EXPONENT = new int[257];
     private final static int[] ALPHA_VALUE = new int[257];
