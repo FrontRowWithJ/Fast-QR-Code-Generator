@@ -4,22 +4,12 @@
 #include "QRCode.h"
 #include <math.h>
 
-int QRVersion;
-int QRWidth;
-int ECL;
-int formatData[15] = {};
-int versionData[18] = {};
-int **QRData;
-
-typedef struct QR
-{
-    int QRVersion;
-    int QRWidth;
-    int ECL;
-    int formatData[15];
-    int versionData[18];
-    int **QRData;
-} QRCode;
+// int QRVersion;
+// size_t QRWidth;
+// int ECL;
+// int formatData[15];
+// int versionData[18];
+// int **QRData;
 
 int main(void)
 {
@@ -30,7 +20,7 @@ int main(void)
     return 0;
 }
 
-void gen_format_data(int ECL, int mpr, int formatData[], size_t len)
+void gen_format_data(int ECL, int mpr, int formatData[15], size_t len)
 {
     int ecl_value[4] = {1, 0, 3, 2};
     int result = ecl_value[ECL];
@@ -70,7 +60,6 @@ int highest_one_bit_position_of(int n)
     n |= (n >> 8);
     n |= (n >> 16);
     int r = n - (n >> 1);
-    printf("%f\n", log(r) / log(2));
     return (int)(log(r) / log(2));
 }
 
@@ -110,7 +99,7 @@ void add_remainder_bits_aray(void)
         REMAINDER_BITS[i] = 4;
 }
 
-void add_format_data(int **QRData)
+void add_format_data(int **QRData, size_t QRWidth, int QRVersion, int formatData[15])
 {
     int fBit = 0;
     for (; fBit <= 5; fBit++)
@@ -122,7 +111,7 @@ void add_format_data(int **QRData)
         QRData[8][14 - fBit] = QRData[4 * QRVersion + fBit + 2][8] = formatData[fBit];
 }
 
-void gen_version_data()
+void gen_version_data(int QRVersion, int versionData[18])
 {
     int result = QRVersion << 12;
     do
@@ -136,27 +125,27 @@ void gen_version_data()
         versionData[i] = (result >> i) & 1;
 }
 
-void add_version_data()
+void add_version_data(int versionData[18], size_t QRWidth, int **QRData)
 {
     for (int i = 0; i < sizeof(versionData) / sizeof(int); i++)
         QRData[i / 3][(QRWidth - 11) + i % 3] = QRData[i % 3 + QRWidth - 11][i / 3] = versionData[i];
 }
 
-void add_position_detectors()
+void add_position_detectors(size_t QRWidth, int **QRData)
 {
-    copy_to_qr_code(0, 0, POSITION_DETECTOR, PD_WIDTH);
-    copy_to_qr_code(0, QRWidth - PD_WIDTH, POSITION_DETECTOR, PD_WIDTH);
-    copy_to_qr_code(QRWidth - PD_WIDTH, 0, POSITION_DETECTOR, PD_WIDTH);
+    copy_to_qr_code(0, 0, POSITION_DETECTOR, PD_WIDTH, QRData);
+    copy_to_qr_code(0, QRWidth - PD_WIDTH, POSITION_DETECTOR, PD_WIDTH, QRData);
+    copy_to_qr_code(QRWidth - PD_WIDTH, 0, POSITION_DETECTOR, PD_WIDTH, QRData);
 }
 
-void copy_to_qr_code(int offsetI, int offsetJ, int **copyFrom, size_t len)
+void copy_to_qr_code(int offsetI, int offsetJ, int **copyFrom, size_t len, int **QRData)
 {
     for (int i = 0; i < len; i++)
         for (int j = 0; j < len; j++)
             QRData[offsetI + i][offsetJ + j] = copyFrom[i][j];
 }
 
-void add_timing_patterns()
+void add_timing_patterns(size_t QRWidth, int **QRData)
 {
     int iH = PD_WIDTH - 1;
     int jH = PD_WIDTH + 1;
@@ -172,7 +161,7 @@ void add_timing_patterns()
     }
 }
 
-int *gen_alignment_coords(int version, int *coords)
+int *gen_alignment_coords(int version, int *coords, int QRVersion)
 {
     int *tmp = (int *)malloc(sizeof(int) * 6);
     int array[] = {6, 34, 60, 86, 112, 138};
@@ -193,12 +182,12 @@ int *gen_alignment_coords(int version, int *coords)
     return coords;
 }
 
-void add_alignment_coords()
+void add_alignment_coords(int QRVersion, int **QRData)
 {
     if (QRVersion == 1)
         return;
     int *coords;
-    coords = gen_alignment_coords(QRVersion, coords);
+    coords = gen_alignment_coords(QRVersion, coords, QRVersion);
     int numOfCoords = 2 + QRVersion / 7;
     for (int i = 0; i < numOfCoords; i++)
     {
@@ -210,12 +199,12 @@ void add_alignment_coords()
                 continue;
             if (i == numOfCoords - 1 && j == 0)
                 continue;
-            copy_to_qr_code(coords[i] - 2, coords[j] - 2, ALIGNMENT_PATTERN, AP_WIDTH);
+            copy_to_qr_code(coords[i] - 2, coords[j] - 2, ALIGNMENT_PATTERN, AP_WIDTH, QRData);
         }
     }
 }
 
-int *byte_mode(char *inputData, int *output)
+int *byte_mode(char *inputData, int *output, int QRVersion)
 {
     char *result = "";
     for (int i = 0; i < strlen(inputData); i++)
@@ -243,7 +232,7 @@ void int_to_binay_string(int num, char *output, size_t len)
         output[len - i - 1] = (char)((num >> i & 1) + 48);
 }
 
-void add_code_words(int *final_message, size_t final_message_len)
+void add_code_words(int *final_message, size_t final_message_len, int **QRData, size_t QRWidth)
 {
     int index = final_message_len - 1;
     int j = QRWidth - 1;
@@ -268,13 +257,13 @@ void add_code_words(int *final_message, size_t final_message_len)
 
 int num_of_code_words(int QRVersion)
 {
-    int qrWidth = 4 * QRVersion + 17;
-    int codewords = qrWidth * qrWidth;
+    size_t QRWidth = 4 * QRVersion + 17;
+    int codewords = QRWidth * QRWidth;
     codewords -= 3 * 64;
     codewords -= QRVersion > 6 ? 67 : 31;
     int alignmentPatterns = QRVersion == 1 ? 0 : ((2 + QRVersion / 7) * (2 + QRVersion / 7) - 3) * 25;
     codewords -= alignmentPatterns;
-    int timingPattern = 2 * (qrWidth - 16) - (QRVersion / 7) * 2 * 5;
+    int timingPattern = 2 * (QRWidth - 16) - (QRVersion / 7) * 2 * 5;
     codewords -= timingPattern;
     return codewords / 8;
 }
@@ -294,7 +283,7 @@ int concat_bits_to_bytes(int *message, int *output, size_t message_len)
     return 0;
 }
 
-int get_qr_version(char *message)
+int get_qr_version(char *message, int ECL)
 {
     int messageLength = -1;
     if (strlen(message) == 0)
@@ -310,7 +299,7 @@ int get_qr_version(char *message)
     return -1;
 }
 
-int add_pad_bytes(char *message, char *paddedString)
+int add_pad_bytes(char *message, char *paddedString, int ECL, int QRVersion)
 {
     paddedString = malloc(BUFFER_SIZE);
     strcpy(paddedString, message);
@@ -344,7 +333,7 @@ char *repeat_string(const char *string, int numberOfTimes, char *result)
     return result;
 }
 
-int gen_block_stucture(int *blockStructure, size_t len)
+int gen_block_stucture(int *blockStructure, size_t len, int QRVersion, int ECL)
 {
     if (blockStructure == NULL || len <= 0)
         return -1;
@@ -406,7 +395,7 @@ int reverse(int *array, size_t array_len)
     return SUCCESS;
 }
 
-void add_remaining_bits(int *finalMessage, size_t finalMessageLen, int *result)
+void add_remaining_bits(int *finalMessage, size_t finalMessageLen, int *result, int QRVersion)
 {
     if (REMAINDER_BITS[QRVersion - 1] != 0)
     {
@@ -419,7 +408,7 @@ void add_remaining_bits(int *finalMessage, size_t finalMessageLen, int *result)
     }
 }
 
-void add_seperators()
+void add_seperators(int **QRData, size_t QRWidth)
 {
     for (int i = 0; i < 8; i++)
     {
@@ -429,7 +418,7 @@ void add_seperators()
     }
 }
 
-void add_mask()
+void add_mask(int **QRData, size_t QRWidth, int ECL, int formatData[15], int QRVersion)
 {
     int correctMpr = 0;
     int mpr = 0;
@@ -499,8 +488,8 @@ void add_mask()
                         QRDataCopy[row][column] ^= ((row + column % 2) + row * column % 3) % 2 ^ 1;
         }
         gen_format_data(ECL, mpr, formatData, 15);
-        add_format_data(QRDataCopy);
-        int penalty = get_matrix_penalty(QRDataCopy);
+        add_format_data(QRDataCopy, QRWidth, QRVersion, formatData);
+        int penalty = get_matrix_penalty(QRDataCopy, QRWidth);
         if (penalty < matrixPenalty)
         {
             matrixPenalty = penalty;
@@ -510,20 +499,20 @@ void add_mask()
         copy_matrix(QRDataOriginal, QRDataCopy, QRWidth);
     }
     gen_format_data(ECL, correctMpr, formatData, 15);
-    add_format_data(QRData);
+    add_format_data(QRData, QRWidth, QRVersion, formatData);
 }
 
-int get_matrix_penalty(int **QRData)
+int get_matrix_penalty(int **QRData, size_t QRWidth)
 {
     int penalty = 0;
-    penalty += evaluate_consecutive_modules_penalty(QRData);
-    penalty += evaluate_2_by_2_module_penalty(QRData);
-    penalty += evaluate_pattern_penalty(QRData);
-    penalty += evaluate_ratio_penalty(QRData);
+    penalty += evaluate_consecutive_modules_penalty(QRData, QRWidth);
+    penalty += evaluate_2_by_2_module_penalty(QRData, QRWidth);
+    penalty += evaluate_pattern_penalty(QRData, QRWidth);
+    penalty += evaluate_ratio_penalty(QRData, QRWidth);
     return penalty;
 }
 
-int evaluate_consecutive_modules_penalty(int **QRData)
+int evaluate_consecutive_modules_penalty(int **QRData, size_t QRWidth)
 {
     int penalty = 0;
     for (int i = 0; i < QRWidth; i++)
@@ -553,7 +542,7 @@ int evaluate_consecutive_modules_penalty(int **QRData)
     return penalty;
 }
 
-int evaluate_2_by_2_module_penalty(int **QRData)
+int evaluate_2_by_2_module_penalty(int **QRData, size_t QRWidth)
 {
     int penalty = 0;
     for (int i = 0; i < QRWidth - 1; i++)
@@ -563,7 +552,7 @@ int evaluate_2_by_2_module_penalty(int **QRData)
     return penalty;
 }
 
-int evaluate_pattern_penalty(int **QRData)
+int evaluate_pattern_penalty(int **QRData, size_t QRWidth)
 {
     int penalty = 0;
     for (int i = 0; i < QRWidth - MODULE_PATTERN_LENGTH; i++)
@@ -613,7 +602,7 @@ int evaluate_pattern_penalty(int **QRData)
     return penalty;
 }
 
-int evaluate_ratio_penalty(int **QRData)
+int evaluate_ratio_penalty(int **QRData, size_t QRWidth)
 {
     int darkModules = 0;
     for (int i = 0; i < QRWidth; i++)
@@ -625,7 +614,7 @@ int evaluate_ratio_penalty(int **QRData)
     return (int)fmin(abs(previousMultiple - 50) / 5, abs(nextMultiple - 50) / 5) * 10;
 }
 
-void add_white_border(int **QRData)
+void add_white_border(int **QRData, size_t QRWidth)
 {
     int **finalQRData = init_matrix(QRWidth + 8, QRWidth + 8);
     for (int i = 0; i < QRWidth; i++)
@@ -634,15 +623,15 @@ void add_white_border(int **QRData)
     QRData = finalQRData;
 }
 
-void copy_matrix(int **src, int **dst, size_t len)
+void copy_matrix(int **src, int **dst, size_t QRWidth)
 {
     src = init_matrix(QRWidth, QRWidth);
-    for (int i = 0; i < len; i++)
-        for (int j = 0; j < len; j++)
+    for (int i = 0; i < QRWidth; i++)
+        for (int j = 0; j < QRWidth; j++)
             dst[i][j] = src[i][j];
 }
 
-void set_to_dark(int **QRData)
+void set_to_dark(int **QRData, size_t QRWidth)
 {
     for (int i = 0; i < QRWidth; i++)
         for (int j = 0; j < QRWidth; j++)
