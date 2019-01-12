@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+
 #define FALSE_READ_ONLY 0
 #define TRUE_READ_ONLY 1
 #define FALSE 2
@@ -8,44 +9,12 @@
 #define TERMINATOR "0000" // end of message
 #define CCI_TABLE (int[3][4]){{10, 9, 8, 8}, {12, 11, 16, 10}, {14, 13, 16, 12}};
 #define XOR_MASK 0b101010000010010;
-// defining the format information
-// ECL = Error Correction Level
 #define FORMAT_GX 0b10100110111
 #define VERSION_GX 0b1111100100101
 #define FORMAT_OFFSET 10
 #define PD_WIDTH 7
-int **POSITION_DETECTOR;
 #define AP_WIDTH 5
-int **ALIGNMENT_PATTERN;
 #define TIMING_PATTERN 6
-#define NUM_OF_ERROR_CODES_L                                                                               \
-    (int[40])                                                                                              \
-    {                                                                                                      \
-        7, 10, 15, 20, 26, 36, 40, 48, 60, 72, 80, 96, 104, 120, 132,                                      \
-            144, 168, 180, 196, 224, 224, 252, 270, 300, 312, 336, 360, 390, 420, 450, 480, 510, 540, 570, \
-            570, 600, 630, 660, 720, 750                                                                   \
-    }
-#define NUM_OF_ERROR_CODES_M                                                                               \
-    (int[40])                                                                                              \
-    {                                                                                                      \
-        10, 16, 26, 36, 48, 64, 72, 88, 110, 130, 150, 176, 198, 216,                                      \
-            240, 280, 308, 338, 364, 416, 442, 476, 504, 560, 588, 644, 700, 728, 784, 812, 868, 924, 980, \
-            1036, 1064, 1120, 1204, 1260, 1316, 1372                                                       \
-    }
-#define NUM_OF_ERROR_CODES_Q                                                                               \
-    (int[40])                                                                                              \
-    {                                                                                                      \
-        13, 22, 36, 52, 72, 96, 108, 132, 160, 192, 224, 260, 288,                                         \
-            320, 360, 408, 448, 504, 546, 600, 644, 690, 750, 810, 870, 952, 1020, 1050, 1140, 1200, 1290, \
-            1350, 1440, 1530, 1590, 1680, 1770, 1860, 1950, 2040                                           \
-    }
-#define NUM_OF_ERROR_CODES_H                                                                                 \
-    (int[40])                                                                                                \
-    {                                                                                                        \
-        17, 28, 44, 64, 88, 112, 130, 156, 192, 224, 264, 308, 352,                                          \
-            384, 432, 480, 532, 588, 650, 700, 750, 816, 900, 960, 1050, 1110, 1200, 1260, 1350, 1440, 1530, \
-            1620, 1710, 1800, 1890, 1980, 2100, 2220, 2310, 2430                                             \
-    }
 #define ERROR_CODES                                                                                              \
     (int[4][40])                                                                                                 \
     {                                                                                                            \
@@ -64,27 +33,7 @@ int **ALIGNMENT_PATTERN;
                 1620, 1710, 1800, 1890, 1980, 2100, 2220, 2310, 2430                                             \
         }                                                                                                        \
     }
-#define BLOCK_COUNT_L                                                          \
-    (int[40])                                                                  \
-    {                                                                          \
-        1, 1, 1, 1, 1, 2, 2, 2, 2, 4, 4, 4, 4, 4, 6, 6, 6, 6, 7, 8, 8, 9, 9,   \
-            10, 12, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 24, 25 \
-    }
-#define BLOCK_COUNT_M                                                                      \
-    (int[40])                                                                              \
-    {                                                                                      \
-        1, 1, 1, 2, 2, 4, 4, 4, 5, 5, 5, 8, 9, 9, 10, 10, 11, 13, 14, 16,                  \
-            17, 17, 18, 20, 21, 23, 25, 26, 28, 29, 31, 33, 35, 37, 38, 40, 43, 45, 47, 49 \
-    }
-#define BLOCK_COUNT_Q                                                                      \
-    (int[40])                                                                              \
-    {                                                                                      \
-        1, 1, 2, 2, 4, 4, 6, 6, 8, 8, 8, 10, 12, 16, 12, 17, 16, 18, 21, 20,               \
-            23, 23, 25, 27, 29, 34, 34, 35, 38, 40, 43, 45, 48, 51, 53, 56, 59, 62, 65, 68 \
-    }
-#define BLOCK_COUNT_H                                                             \
-    (int[40]) { 1, 1, 2, 4, 4, 4, 8, 6, 8, 8, 11, 11, 16, 16, 18, 16, 19, 21, 25, \
-                25, 25, 34, 30, 32, 35, 37, 40, 42, 45, 48, 51, 54, 57, 60, 63, 66, 70, 74, 77, 81 }
+
 #define BLOCK_COUNT                                                                                \
     (int[4][40])                                                                                   \
     {                                                                                              \
@@ -99,7 +48,6 @@ int **ALIGNMENT_PATTERN;
                 25, 25, 34, 30, 32, 35, 37, 40, 42, 45, 48, 51, 54, 57, 60, 63, 66, 70, 74, 77, 81 \
         }                                                                                          \
     }
-
 #define P_VALUE                                    \
     (int[3][4])                                    \
     {                                              \
@@ -143,44 +91,56 @@ int **ALIGNMENT_PATTERN;
     {                                   \
         2, 2, 2, 2, 3, 2, 3, 3, 3, 2, 3 \
     }
-
 #define BUFFER_SIZE 32768
 #define ERROR -1
 #define SUCCESS 0
+int **POSITION_DETECTOR;
+int **ALIGNMENT_PATTERN;
+typedef struct QR
+{
+    int QRVersion;
+    size_t QRWidth;
+    int ECL;
+    int formatData[15];
+    int versionData[18];
+    int **QRData;
+} QRCode;
 void gen_format_data(int ECL, int mpr, int formatData[], size_t len);
 int highest_one_bit_position_of(int number);
 int to_int(int array[], size_t len);
 void gen_position_detectors(void);
-void add_position_detectors(void);
+void add_position_detectors(size_t QRWidth, int **QRData);
 void gen_alignment_pattern(void);
 void add_remainder_bits_aray(void);
-void add_format_data(int **QRData);
-void gen_version_data();
-void add_version_data();
-void copy_to_qr_code(int offsetI, int offsetJ, int **copyFrom, size_t len);
+void add_format_data(int **QRData, size_t QRWidth, int QRVersion, int formatData[15]);
+void gen_version_data(int QRVersion, int versionData[18]);
+void add_version_data(int versionData[18], size_t QRWidth, int **QRData);
+void copy_to_qr_code(int offsetI, int offsetJ, int **copyFrom, size_t len, int **QRData);
 void add_timing_patterns();
-int *gen_alignment_coords(int version, int *coords);
-void add_alignment_coords();
-int *byte_mode(char *inputData, int *output);
+int *gen_alignment_coords(int version, int *coords, int QRVersion);
+void add_alignment_coords(int QRVersion, int **QRData);
+int *byte_mode(char *inputData, int *output, int QRVersion);
 void int_to_binay_string(int character, char *output, size_t len);
-void add_code_words(int *final_message, size_t final_message_len);
+void add_code_words(int *final_message, size_t final_message_len, int **QRData, size_t QRWidth);
 int num_of_code_words(int QRVersion);
 int concat_bits_to_bytes(int *message, int *output, size_t message_len);
-int get_qr_version(char *message);
-int add_pad_bytes(char *messgage, char *paddedString);
+int get_qr_version(char *message, int ECL);
+int add_pad_bytes(char *messgage, char *paddedString, int ECL, int QRVersion);
 char *repeat_string(const char *string, int numberOfTimes, char *result);
-int gen_block_stucture(int *blockStructure, size_t len);
+int gen_block_stucture(int *blockStructure, size_t len, int QRVersion, int ECL);
 int gen_final_message(int *message, int *finalMessage, size_t len);
 int gen_error_block(int **messageBlock, size_t messageBLockWidth, size_t messageBlockHeight, int numOFErrorCodewords, int **rrorBlock);
 int to_bit_array(int *message, size_t messageLen, int *bitArray);
 int reverse(int *array, size_t arrayLen);
-void add_seperators();
-void copy_matrix(int **src, int **dst, size_t len);
-int get_matrix_penalty(int **QRData);
+void add_remaining_bits(int *finalMessage, size_t finalMessageLen, int *result, int QRVersion);
+void add_seperators(int **QRData, size_t QRWidth);
+void add_mask(int **QRData, size_t QRWidth, int ECL, int formatData[15], int QRVersion);
+void copy_matrix(int **src, int **dst, size_t QRWidth);
+int get_matrix_penalty(int **QRData, size_t QRWidth);
 int **init_matrix(size_t row, size_t column);
 void free_matrix(int **matrix, size_t row);
-int evaluate_consecutive_modules_penalty(int **QRData);
-int evaluate_2_by_2_module_penalty(int **QRData);
-int evaluate_pattern_penalty(int **QRData);
-int evaluate_ratio_penalty(int **QRData);
-void add_white_border(int **QRData);
+int evaluate_consecutive_modules_penalty(int **QRData, size_t QRWidth);
+int evaluate_2_by_2_module_penalty(int **QRData, size_t QRWidth);
+int evaluate_pattern_penalty(int **QRData, size_t QRWidth);
+int evaluate_ratio_penalty(int **QRData, size_t QRWidth);
+void add_white_border(int **QRData, size_t QRWidth);
