@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include "Term.h"
 
 #define FALSE_READ_ONLY 0
 #define TRUE_READ_ONLY 1
@@ -94,6 +95,9 @@
 #define BUFFER_SIZE 32768
 #define ERROR -1
 #define SUCCESS 0
+typedef int bool;
+enum {dontSetToDark, setToDark};
+enum {false, true};
 int **POSITION_DETECTOR;
 int **ALIGNMENT_PATTERN;
 typedef struct QR
@@ -105,6 +109,8 @@ typedef struct QR
     int versionData[18];
     int **QRData;
 } QRCode;
+
+QRCode init(int ECL, char *message, bool setToDark);
 void gen_format_data(int ECL, int mpr, int formatData[], size_t len);
 int highest_one_bit_position_of(int number);
 int to_int(int array[], size_t len);
@@ -118,8 +124,8 @@ void add_version_data(int versionData[18], size_t QRWidth, int **QRData);
 void copy_to_qr_code(int offsetI, int offsetJ, int **copyFrom, size_t len, int **QRData);
 void add_timing_patterns();
 int *gen_alignment_coords(int version, int *coords, int QRVersion);
-void add_alignment_coords(int QRVersion, int **QRData);
-int *byte_mode(char *inputData, int *output, int QRVersion);
+void add_alignment_pattern(int QRVersion, int **QRData);
+int *byte_mode(char *inputData, int *output, int QRVersion, size_t *outputLen);
 void int_to_binay_string(int character, char *output, size_t len);
 void add_code_words(int *final_message, size_t final_message_len, int **QRData, size_t QRWidth);
 int num_of_code_words(int QRVersion);
@@ -127,15 +133,17 @@ int concat_bits_to_bytes(int *message, int *output, size_t message_len);
 int get_qr_version(char *message, int ECL);
 int add_pad_bytes(char *messgage, char *paddedString, int ECL, int QRVersion);
 char *repeat_string(const char *string, int numberOfTimes, char *result);
-int gen_block_stucture(int *blockStructure, size_t len, int QRVersion, int ECL);
-int gen_final_message(int *message, int *finalMessage, size_t len);
-int gen_error_block(int **messageBlock, size_t messageBLockWidth, size_t messageBlockHeight, int numOFErrorCodewords, int **rrorBlock);
+int gen_block_stucture(int *blockStructure, size_t len, int QRVersion, int ECL, size_t *blockStructureLen);
+int gen_final_message(int *message, int *finalMessage, size_t len, int QRVersion, int ECL, size_t *finalMessageLen);
+int *gen_error_block(int **messageBlock, size_t messageBlockHeight, size_t *messageBlockRowLens, int numOFErrorCodewords);
+Term *gen_error_polynomial(int *message, size_t messageLen, int numOfErrorCodewords);
 int to_bit_array(int *message, size_t messageLen, int *bitArray);
 int reverse(int *array, size_t arrayLen);
 void add_remaining_bits(int *finalMessage, size_t finalMessageLen, int *result, int QRVersion);
 void add_seperators(int **QRData, size_t QRWidth);
 void add_mask(int **QRData, size_t QRWidth, int ECL, int formatData[15], int QRVersion);
 void copy_matrix(int **src, int **dst, size_t QRWidth);
+void set_to_dark(int **QRData, size_t QRWidth);
 int get_matrix_penalty(int **QRData, size_t QRWidth);
 int **init_matrix(size_t row, size_t column);
 void free_matrix(int **matrix, size_t row);
