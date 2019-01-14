@@ -1,23 +1,57 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "QRCode.h"
 #include <math.h>
-
-// int QRVersion;
-// size_t QRWidth;
-// int ECL;
-// int formatData[15];
-// int versionData[18];
-// int **QRData;
+#include "QRCode.h"
+#include "Term.h"
 
 int main(void)
 {
-    gen_position_detectors();
-    int formatData[15] = {0};
-    gen_format_data(0, 0, formatData, sizeof(formatData) / sizeof(int));
-    printf("%d\n", to_int(formatData, sizeof(formatData) / sizeof(int)));
+    int ECL = 0;
+    char *message = "HELLO EVERYONE";
+    bool setToDark = false;
+    init(ECL, message, setToDark);
     return 0;
+}
+
+QRCode init(int ECL, char *message, bool setToDark)
+{
+    QRCode qr;
+    qr.ECL = ECL;
+    qr.QRVersion = get_qr_version(message, ECL);
+    size_t outputLen;
+    int *messageBitStream = byte_mode(message, messageBitStream, qr.QRVersion, &outputLen);
+    int *messageCodewords;
+    concat_bits_to_bytes(messageBitStream, messageCodewords, outputLen);
+    qr.QRWidth = 17 + qr.QRVersion * 4;
+    qr.QRData = init_matrix(qr.QRWidth, qr.QRWidth);
+    for (int i = 0; i < qr.QRWidth; i++)
+        for (int j = 0; j < qr.QRWidth; j++)
+            qr.QRData[i][j] = ERROR;
+    add_seperators(qr.QRData, qr.QRWidth);
+    add_position_detectors(qr.QRWidth, qr.QRData);
+    add_timing_patterns(qr.QRWidth, qr.QRData);
+    qr.QRData[4 * qr.QRVersion + 9][8] = TRUE_READ_ONLY;
+    add_format_data(qr.QRData, qr.QRWidth, qr.QRVersion, qr.formatData);
+    if (qr.QRVersion >= 7)
+    {
+        gen_version_data(qr.QRVersion, qr.versionData);
+        add_version_data(qr.versionData, qr.QRWidth, qr.QRData);
+    }
+    add_alignment_pattern(qr.QRVersion, qr.QRData);
+    reverse(messageCodewords, outputLen / 8);
+    int *finalMessage;
+    size_t finalMessageLen;
+    gen_final_message(messageCodewords, finalMessage, outputLen / 8, qr.QRVersion, qr.ECL, &finalMessageLen);
+    int *finalMessageBitArray;
+    to_bit_array(finalMessage, finalMessageLen, finalMessageBitArray);
+    int *finalFinalMessage;
+    add_remaining_bits(finalMessageBitArray, finalMessageLen * 8, finalFinalMessage, qr.QRVersion);
+    add_code_words(finalFinalMessage, finalMessageLen * 8, qr.QRData, qr.QRWidth);
+    add_mask(qr.QRData, qr.QRWidth, qr.ECL, qr.formatData, qr.QRVersion);
+    add_white_border(qr.QRData, qr.QRWidth);
+    if (setToDark)
+        set_to_dark(qr.QRData, qr.QRWidth);
 }
 
 void gen_format_data(int ECL, int mpr, int formatData[15], size_t len)
@@ -127,7 +161,7 @@ void gen_version_data(int QRVersion, int versionData[18])
 
 void add_version_data(int versionData[18], size_t QRWidth, int **QRData)
 {
-    for (int i = 0; i < sizeof(versionData) / sizeof(int); i++)
+    for (int i = 0; i < 18; i++)
         QRData[i / 3][(QRWidth - 11) + i % 3] = QRData[i % 3 + QRWidth - 11][i / 3] = versionData[i];
 }
 
@@ -182,7 +216,7 @@ int *gen_alignment_coords(int version, int *coords, int QRVersion)
     return coords;
 }
 
-void add_alignment_coords(int QRVersion, int **QRData)
+void add_alignment_pattern(int QRVersion, int **QRData)
 {
     if (QRVersion == 1)
         return;
@@ -204,7 +238,7 @@ void add_alignment_coords(int QRVersion, int **QRData)
     }
 }
 
-int *byte_mode(char *inputData, int *output, int QRVersion)
+int *byte_mode(char *inputData, int *output, int QRVersion, size_t *outputLen)
 {
     char *result = "";
     for (int i = 0; i < strlen(inputData); i++)
@@ -221,6 +255,7 @@ int *byte_mode(char *inputData, int *output, int QRVersion)
     strcat(str, characterCount);
     strcat(str, result);
     output = malloc(strlen(str) * sizeof(int));
+    *outputLen = strlen(str);
     for (int i = 0; i < strlen(str); i++)
         output[i] = str[sizeof(str) - i - 1] == '1' ? TRUE : FALSE;
     return output;
@@ -280,7 +315,7 @@ int concat_bits_to_bytes(int *message, int *output, size_t message_len)
             codeword |= (message[i + j] % 2) << j;
         output[i / 8] = codeword;
     }
-    return 0;
+    return SUCCESS;
 }
 
 int get_qr_version(char *message, int ECL)
@@ -333,7 +368,7 @@ char *repeat_string(const char *string, int numberOfTimes, char *result)
     return result;
 }
 
-int gen_block_stucture(int *blockStructure, size_t len, int QRVersion, int ECL)
+int gen_block_stucture(int *blockStructure, size_t len, int QRVersion, int ECL, size_t *blockStructureLen)
 {
     if (blockStructure == NULL || len <= 0)
         return -1;
@@ -341,7 +376,8 @@ int gen_block_stucture(int *blockStructure, size_t len, int QRVersion, int ECL)
     //                 blockStructure[1 % 3] = numOfErrorCodewords per block
     //                 blockStructure[2 % 3] = number of blocks
     int numOfCodeWords = num_of_code_words(QRVersion);
-    blockStructure = malloc((numOfCodeWords & BLOCK_COUNT[ECL][QRVersion - 1] == 0 ? 3 : 6) * sizeof(int));
+    *blockStructureLen = numOfCodeWords % BLOCK_COUNT[ECL][QRVersion - 1] == 0 ? 3 : 6;
+    blockStructure = malloc(*blockStructureLen * sizeof(int));
     blockStructure[0] = (numOfCodeWords - ERROR_CODES[ECL][QRVersion - 1]) / BLOCK_COUNT[ECL][QRVersion - 1];
     blockStructure[1] = numOfCodeWords / BLOCK_COUNT[ECL][QRVersion - 1] - blockStructure[0];
     int n = numOfCodeWords - (numOfCodeWords / BLOCK_COUNT[ECL][QRVersion - 1]) * BLOCK_COUNT[ECL][QRVersion - 1];
@@ -355,23 +391,92 @@ int gen_block_stucture(int *blockStructure, size_t len, int QRVersion, int ECL)
     return 0;
 }
 
-int gen_final_message(int *message, int *finalMessage, size_t len)
+int gen_final_message(int *message, int *finalMessage, size_t len, int QRVersion, int ECL, size_t *finalMessageLen)
 {
-    //do shit, don't forget Term.c
+    int position = 0;
+    int *blockStructure;
+    size_t blockStructureLen;
+    size_t *messageBlockLens;
+    gen_block_stucture(blockStructure, len, QRVersion, ECL, &blockStructureLen);
+    int blockCount = BLOCK_COUNT[ECL][QRVersion - 1];
+    int **messageBlock = (int **)malloc(blockCount * sizeof(int *));
+    messageBlockLens = (size_t *)malloc(blockCount * sizeof(int));
+    for (int i = 0; i < blockStructure[2]; i++)
+    {
+        messageBlock[i] = (int *)malloc(blockStructure[0] * sizeof(int));
+        messageBlockLens[i] = blockStructure[0];
+        for (int j = 0; j < blockStructure[0]; j++)
+            messageBlock[i][j] = message[position + j];
+        position += blockStructure[0];
+    }
+    if (blockStructureLen == 6)
+        for (int i = blockStructure[2]; i < blockStructure[2] + blockStructure[5]; i++)
+        {
+            messageBlock[i] = (int *)malloc(blockStructure[3] * sizeof(int));
+            messageBlockLens[i] = blockStructure[3];
+            for (int j = 0; j < blockStructure[3]; j++)
+                messageBlock[i][j] = message[position + j];
+            position += blockStructure[3];
+        }
+    int *weavedMessage = (int *)malloc(len * sizeof(int));
+    if (blockStructureLen == 6)
+    {
+        for (int i = 0; i < len - blockStructure[5]; i++)
+            weavedMessage[i] = messageBlock[i % blockCount][i / blockCount];
+        for (int i = 0; i < blockStructure[5]; i++)
+            weavedMessage[len - (blockStructure[5] - i)] = messageBlock[blockStructure[2] + i][blockStructure[3] - 1];
+    }
+    else
+        for (int i = 0; i < len; i++)
+            weavedMessage[i] = messageBlock[i % blockCount][i / blockCount];
+    int *weavedErrorCodewords = gen_error_block(messageBlock, blockCount, messageBlockLens, blockStructure[1]);
+    *finalMessageLen = blockCount * (blockStructure[0] + blockStructure[1]);
+    finalMessage = (int *)calloc(*finalMessageLen, sizeof(int));
+    for (int i = 0; i < len; i++)
+        finalMessage[i] = weavedMessage[i];
+    for (int i = 0; i < blockCount * blockStructure[1]; i++)
+        finalMessage[len + i] = weavedErrorCodewords[i];
+    return SUCCESS;
 }
 
-int gen_error_block(int **messageBlock, size_t messageBLockWidth, size_t messageBlockHeight, int numOFErrorCodewords, int **errorBlock)
+int *gen_error_block(int **messageBlock, size_t messageBlockHeight, size_t *messageBlockRowLens, int numOFErrorCodewords)
 {
-    // do some hit also
+    int **errorBlock = init_matrix(messageBlockHeight, numOFErrorCodewords);
+    for (int i = 0; i < messageBlockHeight; i++)
+    {
+        Term *errorPolynomial = gen_error_polynomial(messageBlock[i], messageBlockRowLens[i], numOFErrorCodewords);
+        errorBlock[i] = to_array(errorPolynomial, numOFErrorCodewords);
+    }
+    int *weavedCodewords = (int *)malloc(numOFErrorCodewords * messageBlockHeight * sizeof(int));
+    for (int i = 0; i < numOFErrorCodewords * messageBlockHeight; i++)
+        weavedCodewords[i] = errorBlock[i % messageBlockHeight][i / messageBlockHeight];
+    return weavedCodewords;
 }
 
-//*Term genErrorPolyNomial(int *message, size_t messageLen, int numOfErrorCodewords);
+Term *gen_error_polynomial(int *message, size_t messageLen, int numOfErrorCodewords)
+{
+    Term *messagePolynomial = to_polynomial_temp(message, messageLen);
+    size_t generatorLen;
+    Term *generatorPolynomial = gen_polynomial(numOfErrorCodewords, &generatorLen);
+    messagePolynomial = multiply_x(messagePolynomial, messageLen, numOfErrorCodewords);
+    int difference = messagePolynomial[0].xExponent - generatorPolynomial[0].xExponent;
+    Term *shiftedGenPolynomial = multiply_x(generatorPolynomial, generatorLen, messagePolynomial[0].xExponent);
+    size_t errorPolyLen;
+    Term *errorPolynomial = xor(messagePolynomial, shiftedGenPolynomial, messageLen, generatorLen, &errorPolyLen);
+    for (int i = 0; i < messageLen - 1; i++)
+    {
+        difference = errorPolynomial[0].xExponent - generatorPolynomial[0].xExponent;
+        shiftedGenPolynomial = multiply_x(generatorPolynomial, generatorLen, difference);
+        shiftedGenPolynomial = multiply_alpha(shiftedGenPolynomial, generatorLen, errorPolynomial[0].alphaExponent);
+        errorPolynomial = xor(errorPolynomial, shiftedGenPolynomial, errorPolyLen, generatorLen, &errorPolyLen);
+    }
+    return errorPolynomial;
+}
 
 int to_bit_array(int *message, size_t messageLen, int *bitArray)
 {
     if (reverse(message, messageLen) == ERROR)
-        ;
-    return ERROR;
+        return ERROR;
     bitArray = malloc(messageLen * 8 * sizeof(int));
     for (int i = 0; i < messageLen; i++)
     {
