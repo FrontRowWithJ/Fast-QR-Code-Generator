@@ -6,6 +6,8 @@
 
 void populate_alpha_arrays()
 {
+    ALPHA_VALUE_EXPONENT = (int *)calloc(257, sizeof(int));
+    ALPHA_VALUE = (int *)calloc(257, sizeof(int));
     for (int i = 0; i < 255; i++)
     {
         int alpha = get_alpha(i);
@@ -57,53 +59,32 @@ Term *multiply_x(Term *polynomial, size_t len, int x)
 {
     Term *result = (Term *)malloc(len * sizeof(Term));
     for (int i = 0; i < len; i++)
-    {
-        Term t;
-        t.xExponent = polynomial[i].xExponent + x;
-        t.alphaExponent = polynomial[i].alphaExponent;
-        result[i] = t;
-    }
+        result[i] = init_term(polynomial[i].xExponent + x, polynomial[i].alphaExponent);
     return result;
-}
-
-Term clone(Term term)
-{
-    Term clone;
-    clone.alphaExponent = term.alphaExponent;
-    clone.xExponent = term.xExponent;
-    return clone;
 }
 
 Term *multiply_alpha(Term *polynomial, size_t len, int alpha)
 {
     Term *result = (Term *)malloc(len * sizeof(Term));
     for (int i = 0; i < len; i++)
-    {
-        Term t;
-        t.xExponent = polynomial[i].xExponent;
-        t.alphaExponent = (polynomial[i].alphaExponent + alpha) % 255;
-    }
+        result[i] = init_term(polynomial[i].xExponent, (polynomial[i].alphaExponent + alpha) % 255);
     return result;
 }
 
 Term * xor (Term * poly1, Term *poly2, size_t poly1Length, size_t poly2Length, size_t *resultLen) {
-    int limit = (int)fmin(poly1Length, poly2Length);
-    int max = (int)fmax(poly1Length, poly2Length);
+    int limit = min(poly1Length, poly2Length);
+    int max = max(poly1Length, poly2Length);
     Term *result = (Term *)malloc((max - 1) * sizeof(Term));
     *resultLen = max - 1;
     int i = 0;
     for (; i < limit - 1; i++)
-    {
-        Term t;
-        t.xExponent = poly1[i + 1].xExponent;
-        t.alphaExponent = ALPHA_VALUE_EXPONENT[ALPHA_VALUE[poly1[i + 1].alphaExponent] ^ ALPHA_VALUE[poly2[i + 1].alphaExponent]];
-    }
+        result[i] = init_term(poly1[i + 1].xExponent, ALPHA_VALUE_EXPONENT[ALPHA_VALUE[poly1[i + 1].alphaExponent] ^ ALPHA_VALUE[poly2[i + 1].alphaExponent]]);
     if (poly1Length > poly2Length)
         for (; i < max - 1; i++)
-            result[i] = clone(poly1[i + 1]);
+            result[i] = init_term(poly1[i + 1].xExponent, poly1[i + 1].alphaExponent);
     else
         for (; i < max - 1; i++)
-            result[i] = clone(poly2[i + 1]);
+            result[i] = init_term(poly2[i + 1].xExponent, poly2[i + 1].alphaExponent);
     return result;
 }
 
@@ -147,10 +128,7 @@ Term *to_polynomial(int *message, size_t len)
             int bit = message[i + j] % 2;
             codeword |= (bit << j);
         }
-        Term t;
-        t.xExponent = i / 8;
-        t.alphaExponent = ALPHA_VALUE_EXPONENT[codeword];
-        polynomial[(len - i) / 8 - 1] = t;
+        polynomial[(len - i) / 8 - 1] = init_term(i / 8, ALPHA_VALUE_EXPONENT[codeword]);
     }
     return polynomial;
 }
@@ -161,8 +139,9 @@ Term *to_polynomial_temp(int *message, size_t len)
     for (int i = 0; i < len; i++)
     {
         Term t;
-        t.xExponent = len - 1 - 1;
+        t.xExponent = len - i - 1;
         t.alphaExponent = ALPHA_VALUE_EXPONENT[message[i]];
+        polynomial[i] = t;
     }
     return polynomial;
 }
@@ -184,7 +163,7 @@ int *to_error_codes(Term *polynomial, size_t len)
 
 int *to_array(Term *polynomial, size_t len)
 {
-    int *result = (int *)(len * sizeof(int));
+    int *result = (int *)malloc(len * sizeof(int));
     for (int i = 0; i < len; i++)
         result[i] = ALPHA_VALUE[polynomial[i].alphaExponent];
     return result;
@@ -206,7 +185,6 @@ Term *gen_polynomial(int errorCodeCount, size_t *result_len)
         t2.alphaExponent = i;
         terms[i][1] = t2;
     }
-
     Term *result = terms[0];
     *result_len = 2;
     for (int i = 1; i < errorCodeCount; i++)
@@ -216,6 +194,7 @@ Term *gen_polynomial(int errorCodeCount, size_t *result_len)
         result = simplify(result, i, *result_len);
         *result_len -= i;
     }
+    return result;
 }
 
 Term **init_term_marix(int errorCodeCount)
@@ -232,4 +211,43 @@ void free_term_matrix(Term **term, size_t len)
     for (int i = 0; i < len; i++)
         free(term[i]);
     free(term);
+}
+
+char *to_super_script(int n)
+{
+    char *result = (char *)calloc(100, sizeof(char));
+    int number = 0;
+    do
+    {
+        number *= 10;
+        number += (n % 10);
+        n /= 10;
+    } while (n != 0);
+    int i = 0;
+    do
+    {
+        result[i++] = SUPERSCRIPT[number % 10];
+        number /= 10;
+    } while (number != 0);
+    return result;
+}
+
+char *pretty_print(Term *polynomial, size_t len)
+{
+    char *result = (char *)calloc(len * 100, sizeof(result));
+    for (int i = 0; i < len; i++)
+    {
+        strcat(result, "x");
+        char *buffer0 = (char *)calloc(100, sizeof(char));
+        sprintf(buffer0, "%d", polynomial[i].xExponent);
+        strcat(result, buffer0);
+        strcat(result, "α");
+        char *buffer1 = (char *)calloc(100, sizeof(char));
+        sprintf(buffer1, "%d", polynomial[i].alphaExponent);
+        strcat(result, buffer1);
+        strcat(result, i < len - 1 ? " + " : "");
+        free(buffer0);
+        free(buffer1);
+    }
+    return result;
 }
