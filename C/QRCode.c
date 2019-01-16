@@ -4,11 +4,16 @@
 #include <math.h>
 #include "QRCode.h"
 #include "Term.h"
-
-int main(void)
+#define ANSI_COLOR_BLACK "\x1b[30m"
+#define ANSI_COLOR_WHITE "\x1b[97m"
+#define ANSI_COLOR_CYAN "\x1b[36m"
+#define ANSI_COLOR_RED "\x1b[31m"
+#define ANSI_COLOR_GREEN "\x1b[32m"
+#define ANSI_COLOR_RESET "\x1b[0m"
+int main(int argc, char **argv)
 {
     int ECL = 0;
-    char *message = "HELLO WORLD";
+    char *message = argv[1];
     bool setToDark = false;
     QRCode qr = init(ECL, message, setToDark);
     return 0;
@@ -21,12 +26,14 @@ QRCode init(int ECL, char *message, bool setToDark)
     QRCode qr;
     qr.ECL = ECL;
     qr.QRVersion = get_qr_version(message, ECL);
+    qr.QRWidth = 17 + qr.QRVersion * 4;
+    qr.QRData = init_matrix(qr.QRWidth, qr.QRWidth);
+    memset(qr.formatData, 0, 15 * sizeof(int));
+    memset(qr.versionData, 0, 18 * sizeof(int));
     size_t outputLen;
     int *messageBitStream = byte_mode(message, qr.QRVersion, &outputLen, ECL);
     int *messageCodewords = (int *)malloc(outputLen / 8 * sizeof(int));
     concat_bits_to_bytes(messageBitStream, messageCodewords, outputLen);
-    qr.QRWidth = 17 + qr.QRVersion * 4;
-    qr.QRData = init_matrix(qr.QRWidth, qr.QRWidth);
     for (int i = 0; i < qr.QRWidth; i++)
         for (int j = 0; j < qr.QRWidth; j++)
             qr.QRData[i][j] = ERROR;
@@ -50,7 +57,8 @@ QRCode init(int ECL, char *message, bool setToDark)
     int *finalFinalMessage = add_remaining_bits(finalMessageBitArray, finalMessageLen * 8, qr.QRVersion, &finalFinalMessageLen);
     add_code_words(finalFinalMessage, finalFinalMessageLen, qr.QRData, qr.QRWidth);
     add_mask(qr.QRData, qr.QRWidth, qr.ECL, qr.formatData, qr.QRVersion);
-    add_white_border(qr.QRData, qr.QRWidth);
+    qr.QRData = add_white_border(qr.QRData, qr.QRWidth);
+    print_qr(qr.QRData, qr.QRWidth + 8);
     if (setToDark)
         set_to_dark(qr.QRData, qr.QRWidth);
 }
@@ -110,13 +118,26 @@ void add_remainder_bits_array(void)
 void add_format_data(int **QRData, size_t QRWidth, int QRVersion, int formatData[15])
 {
     int fBit = 0;
+    int index = 14;
     for (; fBit <= 5; fBit++)
-        QRData[fBit][8] = QRData[8][QRWidth - fBit - 1] = formatData[fBit];
-    for (; fBit <= 7; fBit++)
-        QRData[fBit + 1][8] = QRData[8][QRWidth - fBit - 1] = formatData[fBit];
-    QRData[fBit][7] = QRData[4 * QRVersion + fBit + 2][8] = formatData[fBit++];
+    {
+        QRData[8][fBit] = formatData[index];
+        QRData[QRWidth - fBit - 1][8] = formatData[index--];
+    }
+    QRData[QRWidth - fBit - 1][8] = formatData[index];
+    QRData[8][7] = formatData[index--];
+    fBit++;
+    QRData[8][8] = formatData[index];
+    QRData[8][QRWidth - 8] = formatData[index--];
+    fBit++;
+    QRData[7][8] = formatData[index];
+    QRData[8][QRWidth - 7] = formatData[index--];
+    fBit++;
     for (; fBit <= 14; fBit++)
-        QRData[8][14 - fBit] = QRData[4 * QRVersion + fBit + 2][8] = formatData[fBit];
+    {
+        QRData[14 - fBit][8] = formatData[index];
+        QRData[8][QRWidth - (15 - fBit)] = formatData[index--];
+    }
 }
 
 void gen_version_data(int QRVersion, int versionData[18])
@@ -521,9 +542,9 @@ void add_mask(int **QRData, size_t QRWidth, int ECL, int formatData[15], int QRV
     int correctMpr = 0;
     int mpr = 0;
     int **QRDataOriginal = init_matrix(QRWidth, QRWidth);
-    copy_matrix(QRData, QRDataOriginal, QRWidth);
+    QRDataOriginal = copy_matrix(QRData, QRDataOriginal, QRWidth);
     int **QRDataCopy = init_matrix(QRWidth, QRWidth);
-    copy_matrix(QRData, QRDataCopy, QRWidth);
+    QRDataCopy = copy_matrix(QRData, QRDataCopy, QRWidth);
     int matrixPenalty = __INT32_MAX__;
     for (int i = 0; i < 8; i++)
     {
@@ -591,10 +612,10 @@ void add_mask(int **QRData, size_t QRWidth, int ECL, int formatData[15], int QRV
         if (penalty < matrixPenalty)
         {
             matrixPenalty = penalty;
-            copy_matrix(QRDataCopy, QRData, QRWidth);
+            QRData = copy_matrix(QRDataCopy, QRData, QRWidth);
             correctMpr = mpr;
         }
-        copy_matrix(QRDataOriginal, QRDataCopy, QRWidth);
+        QRDataCopy = copy_matrix(QRDataOriginal, QRDataCopy, QRWidth);
     }
     gen_format_data(ECL, correctMpr, formatData, 15);
     add_format_data(QRData, QRWidth, QRVersion, formatData);
@@ -709,24 +730,24 @@ int evaluate_ratio_penalty(int **QRData, size_t QRWidth)
     int ratio = (int)round((double)darkModules / (QRWidth * QRWidth) * 100);
     int previousMultiple = ratio - ratio % 5;
     int nextMultiple = previousMultiple + 5;
-    return (int)fmin(abs(previousMultiple - 50) / 5, abs(nextMultiple - 50) / 5) * 10;
+    return min(abs(previousMultiple - 50) / 5, abs(nextMultiple - 50) / 5) * 10;
 }
 
-void add_white_border(int **QRData, size_t QRWidth)
+int **add_white_border(int **QRData, size_t QRWidth)
 {
     int **finalQRData = init_matrix(QRWidth + 8, QRWidth + 8);
     for (int i = 0; i < QRWidth; i++)
         for (int j = 0; j < QRWidth; j++)
             finalQRData[i + 4][j + 4] = QRData[i][j];
-    QRData = finalQRData;
+    return finalQRData;
 }
 
-void copy_matrix(int **src, int **dst, size_t QRWidth)
+int **copy_matrix(int **src, int **dst, size_t QRWidth)
 {
-    src = init_matrix(QRWidth, QRWidth);
     for (int i = 0; i < QRWidth; i++)
         for (int j = 0; j < QRWidth; j++)
             dst[i][j] = src[i][j];
+    return dst;
 }
 
 void set_to_dark(int **QRData, size_t QRWidth)
@@ -737,9 +758,9 @@ void set_to_dark(int **QRData, size_t QRWidth)
 }
 int **init_matrix(size_t row, size_t column)
 {
-    int **matrix = (int **)malloc(row * sizeof(int *));
+    int **matrix = (int **)calloc(row, sizeof(int *));
     for (int i = 0; i < row; i++)
-        matrix[i] = (int *)malloc(column * sizeof(int));
+        matrix[i] = (int *)calloc(column, sizeof(int));
     return matrix;
 }
 
@@ -753,5 +774,15 @@ void free_matrix(int **matrix, size_t row)
 void print_array(int *list, size_t len)
 {
     for (int i = 0; i < len; i++)
-        printf("%s%d%s", i == 0 ? "[" : " ", list[i], i == len - 1 ? "]\n" : ",");
+        printf("%s%s%2d%s%s", i == 0 ? "[" : " ", list[i] == 0 ? ANSI_COLOR_CYAN : list[i] == 1 ? ANSI_COLOR_GREEN : ANSI_COLOR_RED, list[i], ANSI_COLOR_RESET, i == len - 1 ? "]\n" : ",");
+}
+
+void print_qr(int **QRData, size_t QRWidth)
+{
+    for (int i = 0; i < QRWidth; i++)
+    {
+        for (int j = 0; j < QRWidth; j++)
+            printf("%s██" ANSI_COLOR_RESET, QRData[i][j] % 2 == 0 ? ANSI_COLOR_WHITE : QRData[i][j] % 2 == 1 ? ANSI_COLOR_BLACK : ANSI_COLOR_RED);
+        printf("\n");
+    }
 }

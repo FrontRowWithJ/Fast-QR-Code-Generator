@@ -8,8 +8,7 @@
 #define TRUE 3
 #define BYTE_MODE "0100"
 #define TERMINATOR "0000" // end of message
-#define CCI_TABLE (int[3][4]){{10, 9, 8, 8}, {12, 11, 16, 10}, {14, 13, 16, 12}};
-#define XOR_MASK 0b101010000010010;
+#define XOR_MASK 0b101010000010010
 #define FORMAT_GX 0b10100110111
 #define VERSION_GX 0b1111100100101
 #define FORMAT_OFFSET 10
@@ -163,7 +162,7 @@ int reverse(int *array, size_t arrayLen);
 int *add_remaining_bits(int *finalMessage, size_t finalMessageLen, int QRVersion, size_t *len);
 void add_seperators(int **QRData, size_t QRWidth);
 void add_mask(int **QRData, size_t QRWidth, int ECL, int formatData[15], int QRVersion);
-void copy_matrix(int **src, int **dst, size_t QRWidth);
+int **copy_matrix(int **src, int **dst, size_t QRWidth);
 void set_to_dark(int **QRData, size_t QRWidth);
 int get_matrix_penalty(int **QRData, size_t QRWidth);
 int **init_matrix(size_t row, size_t column);
@@ -172,6 +171,7 @@ int evaluate_consecutive_modules_penalty(int **QRData, size_t QRWidth);
 int evaluate_2_by_2_module_penalty(int **QRData, size_t QRWidth);
 int evaluate_pattern_penalty(int **QRData, size_t QRWidth);
 int evaluate_ratio_penalty(int **QRData, size_t QRWidth);
-void add_white_border(int **QRData, size_t QRWidth);
+int **add_white_border(int **QRData, size_t QRWidth);
 
 void print_array(int *list, size_t len);
+void print_qr(int **QRData, size_t QRWidth);
