@@ -1,7 +1,8 @@
-package java;
 public class Term {
     private static int[] ALPHA_VALUE_EXPONENT = new int[257];
     private final static int[] ALPHA_VALUE = new int[257];
+    private final static char[] SUPERSCRIPT = { '\u2070', '\u2071', '\u00B2', '\u00B3', '\u2074', '\u2075', '\u2076',
+            '\u2077', '\u2078', '\u2079' };
     // x refers to the exponent of x
     private int xExponent;
     // alpha refers to the exponent of α
@@ -160,6 +161,23 @@ public class Term {
             result = Term.multiplyPolynomials(result, terms[i]);
             result = Term.simplify(result, i);
         }
+        return result;
+    }
+
+    private static String toSuperScript(int n) {
+        String result = "";
+        do {
+            result =SUPERSCRIPT[n % 10] + result;
+            n /= 10;
+        } while (n != 0);
+        return result;
+    }
+
+    public static String prettyPrint(Term... polynomial) {
+        String result = "";
+        for (int i = 0; i < polynomial.length; i++)
+            result += "x" + toSuperScript(polynomial[i].xExponent) + "α" + toSuperScript(polynomial[i].alphaExponent)
+                    + (i < polynomial.length - 1 ? " + " : "\n");
         return result;
     }
 }

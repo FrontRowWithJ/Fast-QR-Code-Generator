@@ -1,4 +1,3 @@
-package java;
 import java.util.Arrays;
 
 public class QRCode implements QRConstants {
@@ -31,7 +30,6 @@ public class QRCode implements QRConstants {
         Arrays.fill(REMAINDER_BITS, 20, 27, 4);
     }
 
-    // I might scrap alphanumeric mode and byteMode
     public QRCode(int ECL, String message, boolean setToDark) {
         QRVersion = getQRVersion(message, ECL);
         this.ECL = ECL;
@@ -281,7 +279,6 @@ public class QRCode implements QRConstants {
         int[] result = new int[numOfCodeWords % BLOCK_COUNT[ECL][QRVersion - 1] == 0 ? 3 : 6];
         result[0] = (numOfCodeWords - ERROR_CODES[ECL][QRVersion - 1]) / BLOCK_COUNT[ECL][QRVersion - 1];
         result[1] = numOfCodeWords / BLOCK_COUNT[ECL][QRVersion - 1] - result[0];
-        // - (QRVersion < 4 ? P_VALUE[QRVersion - 1][ECL] : 0);
         int n = numOfCodeWords - (numOfCodeWords / BLOCK_COUNT[ECL][QRVersion - 1]) * BLOCK_COUNT[ECL][QRVersion - 1];
         result[2] = BLOCK_COUNT[ECL][QRVersion - 1] - n;
         if (result.length == 6) {
