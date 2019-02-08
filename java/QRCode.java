@@ -587,4 +587,9 @@ public class QRCode implements QRConstants {
             array[array.length - 1 - i] = tmp;
         }
     }
+
+    public static void main(String...args){
+        QRCode qr = new QRCode(0, args.length == 0 ? "Hello World" : args[0], false);
+        qr.export("./", 3, "reeeee.png");
+    }
 }
