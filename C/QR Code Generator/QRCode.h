@@ -94,12 +94,15 @@
 #define BUFFER_SIZE 32768
 #define ERROR -1
 #define SUCCESS 0
+#ifndef BOOL_ENUM
+#define BOOL_ENUM
 typedef int bool;
 enum
 {
     false,
     true
 };
+#endif
 #define POSITION_DETECTOR          \
     (int[7][7])                    \
     {                              \
@@ -171,7 +174,6 @@ int evaluate_consecutive_modules_penalty(int **QRData, size_t QRWidth);
 int evaluate_2_by_2_module_penalty(int **QRData, size_t QRWidth);
 int evaluate_pattern_penalty(int **QRData, size_t QRWidth);
 int evaluate_ratio_penalty(int **QRData, size_t QRWidth);
-int **add_white_border(int **QRData, size_t QRWidth);
-
+int **add_white_border(QRCode qr);
 void print_array(int *list, size_t len);
 void print_qr(int **QRData, size_t QRWidth);
