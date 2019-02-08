@@ -1,27 +1,24 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include "QRCode.h"
-#include "Term.h"
 #define ANSI_COLOR_BLACK "\x1b[30m"
 #define ANSI_COLOR_WHITE "\x1b[97m"
 #define ANSI_COLOR_CYAN "\x1b[36m"
 #define ANSI_COLOR_RED "\x1b[31m"
 #define ANSI_COLOR_GREEN "\x1b[32m"
 #define ANSI_COLOR_RESET "\x1b[0m"
-int main(int argc, char **argv)
-{
-    int ECL = 0;
-    char *message;
-    if (argc < 2)
-        message = "HELLO WORLD";
-    else
-        message = argv[1];
-    bool setToDark = false;
-    QRCode qr = init(ECL, message, setToDark);
-    return 0;
-}
+// int main(int argc, char **argv)
+// {
+//     int ECL = 0;
+//     char *message;
+//     if (argc < 2)
+//         message = "HELLO WORLD";
+//     else
+//         message = argv[1];
+//     bool setToDark = false;
+//     QRCode qr = init(ECL, message, setToDark);
+//     return 0;
+// }
 
 QRCode init(int ECL, char *message, bool setToDark)
 {
@@ -61,10 +58,11 @@ QRCode init(int ECL, char *message, bool setToDark)
     int *finalFinalMessage = add_remaining_bits(finalMessageBitArray, finalMessageLen * 8, qr.QRVersion, &finalFinalMessageLen);
     add_code_words(finalFinalMessage, finalFinalMessageLen, qr.QRData, qr.QRWidth);
     add_mask(qr.QRData, qr.QRWidth, qr.ECL, qr.formatData, qr.QRVersion);
-    qr.QRData = add_white_border(qr.QRData, qr.QRWidth);
-    print_qr(qr.QRData, qr.QRWidth + 8);
+    qr.QRData = add_white_border(qr);
+    qr.QRWidth += 8;
     if (setToDark)
         set_to_dark(qr.QRData, qr.QRWidth);
+    return qr;
 }
 
 void gen_format_data(int ECL, int mpr, int formatData[15], size_t len)
@@ -398,7 +396,7 @@ int *gen_block_stucture(size_t len, int QRVersion, int ECL, size_t *blockStructu
     blockStructure[1] = numOfCodeWords / BLOCK_COUNT[ECL][QRVersion - 1] - blockStructure[0];
     int n = numOfCodeWords - (numOfCodeWords / BLOCK_COUNT[ECL][QRVersion - 1]) * BLOCK_COUNT[ECL][QRVersion - 1];
     blockStructure[2] = BLOCK_COUNT[ECL][QRVersion - 1] - n;
-    if (len == 6)
+    if (*blockStructureLen == 6)
     {
         blockStructure[3] = blockStructure[0] + 1;
         blockStructure[4] = blockStructure[1];
@@ -739,12 +737,12 @@ int evaluate_ratio_penalty(int **QRData, size_t QRWidth)
     return min(abs(previousMultiple - 50) / 5, abs(nextMultiple - 50) / 5) * 10;
 }
 
-int **add_white_border(int **QRData, size_t QRWidth)
+int **add_white_border(QRCode qr)
 {
-    int **finalQRData = init_matrix(QRWidth + 8, QRWidth + 8);
-    for (int i = 0; i < QRWidth; i++)
-        for (int j = 0; j < QRWidth; j++)
-            finalQRData[i + 4][j + 4] = QRData[i][j];
+    int **finalQRData = init_matrix(qr.QRWidth + 8, qr.QRWidth + 8);
+    for (int i = 0; i < qr.QRWidth; i++)
+        for (int j = 0; j < qr.QRWidth; j++)
+            finalQRData[i + 4][j + 4] = qr.QRData[i][j];
     return finalQRData;
 }
 
