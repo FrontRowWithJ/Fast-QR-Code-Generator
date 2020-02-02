@@ -12,7 +12,7 @@ Start a http server in the same directory. For example, run the command `python 
 Open your web browser to your specified uri. If you use the example provided it would be localhost:8080
 
 ## Built With
-..* [WebAssembly](https://webassembly.org/) - A binary instruction format for stack based virtual machines.
-..* [C++](https://en.wikipedia.org/wiki/C%2B%2B) - A general purpose programming language
-..* [Javascript](https://en.wikipedia.org/wiki/JavaScript) - A dynamically typed programming language, built for web applications
+* [WebAssembly](https://webassembly.org/) - A binary instruction format for stack based virtual machines.
+* [C++](https://en.wikipedia.org/wiki/C%2B%2B) - A general purpose programming language.
+* [Javascript](https://en.wikipedia.org/wiki/JavaScript) - A dynamically typed programming language, built for web applications.
 
