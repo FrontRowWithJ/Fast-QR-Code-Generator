@@ -18,4 +18,4 @@ Open your web browser to your specified uri. If you use the example provided it 
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md]() file for details
+This project is licensed under the MIT License - see the [LICENSE.md](https://github.com/FrontRowWithJ/Fast-QR-Code-Generator/blob/master/LICENSE) file for details
