@@ -16,3 +16,6 @@ Open your web browser to your specified uri. If you use the example provided it 
 * [C++](https://en.wikipedia.org/wiki/C%2B%2B) - A general purpose programming language.
 * [Javascript](https://en.wikipedia.org/wiki/JavaScript) - A dynamically typed programming language, built for web applications.
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md]() file for details
