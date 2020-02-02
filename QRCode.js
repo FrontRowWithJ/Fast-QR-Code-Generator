@@ -1,4 +1,4 @@
-let QRCode = (()=>{
+let gen_qr_matrix = (()=>{
     let canRun = false;
     Module.onRuntimeInitialized = () => canRun = true;
     const BUFFER_LENGTH = 32768;
