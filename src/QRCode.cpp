@@ -18,56 +18,54 @@
 // }
 extern "C"
 {
-void gen_qr(int ECL, const char *message, std::int8_t *QRData)
-{
-    int QRVersion = qrcode::get_qr_version(message, ECL);
-    int QRWidth = 17 + QRVersion * 4;
-    int formatData[15] = {};
-    int versionData[18] = {};
-    int outputLen;
-    int *messageBitStream = qrcode::byte_mode(message, QRVersion, outputLen, ECL);
-    int *messageCodewords = new int[outputLen / 8];
-    qrcode::concat_bits_to_bytes(messageBitStream, messageCodewords, outputLen);
-    for(int i = 0; i < QRWidth * QRWidth; i++)
-        QRData[i] = ERROR;
-    std::memset(QRData, ERROR, QRWidth * QRWidth);
-    qrcode::add_seperators(QRData, QRWidth);
-    qrcode::add_position_detectors(QRWidth, QRData);
-    qrcode::add_timing_patterns(QRWidth, QRData);
-    QRData[(4 * QRVersion + 9) * QRWidth + 8] = TRUE_READ_ONLY;
-    qrcode::add_format_data(QRData, QRWidth, QRVersion, formatData);
-    if (QRVersion >= 7)
+    void gen_qr(int ECL, const char *message, std::int8_t *QRData)
     {
-        qrcode::gen_version_data(QRVersion, versionData);
-        qrcode::add_version_data(versionData, QRWidth, QRData);
-    }
-    qrcode::add_alignment_pattern(QRVersion, QRData, QRWidth);
-    qrcode::reverse(messageCodewords, outputLen / 8);
-    
-    int finalMessageLen;
-    int *finalMessage = qrcode::gen_final_message(messageCodewords, outputLen / 8, QRVersion, ECL, finalMessageLen);
-    int *finalMessageBitArray = qrcode::to_bit_array(finalMessage, finalMessageLen);
-    int finalFinalMessageLen;
-    qrcode::add_remaining_bits(finalMessageBitArray, finalMessageLen * 8, QRVersion, finalFinalMessageLen);
-    qrcode::add_code_words(finalMessageBitArray, finalFinalMessageLen, QRData, QRWidth);
-    qrcode::add_mask(QRData, QRWidth, ECL, formatData, QRVersion);
-    qrcode::add_white_border(QRData, QRWidth);
-    QRWidth += 8;
+        int QRVersion = qrcode::get_qr_version(message, ECL);
+        int QRWidth = 17 + QRVersion * 4;
+        int formatData[15] = {};
+        int versionData[18] = {};
+        int outputLen;
+        int *messageBitStream = qrcode::byte_mode(message, QRVersion, outputLen, ECL);
+        int *messageCodewords = new int[outputLen / 8];
+        qrcode::concat_bits_to_bytes(messageBitStream, messageCodewords, outputLen);
+        for (int i = 0; i < QRWidth * QRWidth; i++)
+            QRData[i] = ERROR;
+        std::memset(QRData, ERROR, QRWidth * QRWidth);
+        qrcode::add_seperators(QRData, QRWidth);
+        qrcode::add_position_detectors(QRWidth, QRData);
+        qrcode::add_timing_patterns(QRWidth, QRData);
+        QRData[(4 * QRVersion + 9) * QRWidth + 8] = TRUE_READ_ONLY;
+        qrcode::add_format_data(QRData, QRWidth, QRVersion, formatData);
+        if (QRVersion >= 7)
+        {
+            qrcode::gen_version_data(QRVersion, versionData);
+            qrcode::add_version_data(versionData, QRWidth, QRData);
+        }
+        qrcode::add_alignment_pattern(QRVersion, QRData, QRWidth);
+        qrcode::reverse(messageCodewords, outputLen / 8);
 
-    //SHift all the values down one byte so the QRWidth could be stored in the first byte.
-    int8_t tmp = QRData[0];
-    for (int i = 0; i < QRWidth * QRWidth; i++)
-    {
-        std::int8_t tmp1 = QRData[i + 1];
-        QRData[i + 1] = tmp;
-        tmp = tmp1;
+        int finalMessageLen;
+        int *finalMessage = qrcode::gen_final_message(messageCodewords, outputLen / 8, QRVersion, ECL, finalMessageLen);
+        int *finalMessageBitArray = qrcode::to_bit_array(finalMessage, finalMessageLen);
+        int finalFinalMessageLen;
+        qrcode::add_remaining_bits(finalMessageBitArray, finalMessageLen * 8, QRVersion, finalFinalMessageLen);
+        qrcode::add_code_words(finalMessageBitArray, finalFinalMessageLen, QRData, QRWidth);
+        qrcode::add_mask(QRData, QRWidth, ECL, formatData, QRVersion);
+
+        //SHift all the values down one byte so the QRWidth could be stored in the first byte.
+        int8_t tmp = QRData[0];
+        for (int i = 0; i < QRWidth * QRWidth; i++)
+        {
+            std::int8_t tmp1 = QRData[i + 1];
+            QRData[i + 1] = tmp;
+            tmp = tmp1;
+        }
+        QRData[0] = QRWidth;
+        delete[] messageBitStream;
+        delete[] messageCodewords;
+        delete[] finalMessage;
+        delete[] finalMessageBitArray;
     }
-    QRData[0] = QRWidth;
-    delete[] messageBitStream;
-    delete[] messageCodewords;
-    delete[] finalMessage;
-    delete[] finalMessageBitArray;
-}
 }
 void qrcode::gen_format_data(int ECL, int mpr, int formatData[15], int len)
 {
@@ -196,11 +194,6 @@ void qrcode::add_timing_patterns(int QRWidth, std::int8_t *QRData)
 
 void qrcode::gen_alignment_coords(int version, int *&coords, int QRVersion)
 {
-    // if (version == 32)
-    // {
-    //     coords = new int[6]{6, 34, 60, 86, 112, 138};
-    //     return;
-    // }
     int numOfCoords = 2 + QRVersion / 7;
     coords = new int[numOfCoords];
     coords[0] = 6;
@@ -220,7 +213,6 @@ void qrcode::add_alignment_pattern(int QRVersion, std::int8_t *QRData, int QRWid
     int *coords = new int[6];
     int tmp[6] = {6, 34, 60, 86, 112, 138};
     std::copy(tmp, tmp + 6, coords);
-
     if (QRVersion != 32)
     {
         delete[] coords;
@@ -319,14 +311,15 @@ int qrcode::num_of_code_words(int QRVersion)
 
 void qrcode::concat_bits_to_bytes(int *&message, int *&output, int message_len)
 {
-    if (message_len % 8 == 0){
-    for (int i = 0; i < message_len; i += 8)
+    if (message_len % 8 == 0)
     {
-        int codeword = 0;
-        for (int j = 0; j < 8; j++)
-            codeword |= (message[i + j] % 2) << j;
-        output[i / 8] = codeword;
-    }
+        for (int i = 0; i < message_len; i += 8)
+        {
+            int codeword = 0;
+            for (int j = 0; j < 8; j++)
+                codeword |= (message[i + j] % 2) << j;
+            output[i / 8] = codeword;
+        }
     }
 }
 
@@ -351,23 +344,25 @@ void qrcode::add_pad_bytes(char *&message, int ECL, int QRVersion)
 {
     int maxBitLength = CODEWORD_CAPACITY[ECL][QRVersion - 1] * 8;
     int len = (int)std::strlen(message);
-    if (maxBitLength >= len){
-    int n = maxBitLength - len;
-    if (n <= 4 && n > 0){
-        for(int i = 0; i < n; i++)
-            std::strcat(message, "0");
-    }
-    else
+    if (maxBitLength >= len)
     {
-        std::strcat(message, TERMINATOR);
-        int remainingBitsToByte = (8 - std::strlen(message) % 8) % 8;
-        if (remainingBitsToByte > 0)
-            for(int i = 0; i < remainingBitsToByte; i++)
+        int n = maxBitLength - len;
+        if (n <= 4 && n > 0)
+        {
+            for (int i = 0; i < n; i++)
                 std::strcat(message, "0");
-        int remainingBytes = (maxBitLength - std::strlen(message)) / 8;
-        for (int i = 0; i < remainingBytes; i++)
-            std::strcat(message, i % 2 == 0 ? TWO_THREE_SIX : SEVENTEEN);
-    }
+        }
+        else
+        {
+            std::strcat(message, TERMINATOR);
+            int remainingBitsToByte = (8 - std::strlen(message) % 8) % 8;
+            if (remainingBitsToByte > 0)
+                for (int i = 0; i < remainingBitsToByte; i++)
+                    std::strcat(message, "0");
+            int remainingBytes = (maxBitLength - std::strlen(message)) / 8;
+            for (int i = 0; i < remainingBytes; i++)
+                std::strcat(message, i % 2 == 0 ? TWO_THREE_SIX : SEVENTEEN);
+        }
     }
 }
 
@@ -502,12 +497,12 @@ int *qrcode::to_bit_array(int *message, int messageLen)
 void qrcode::reverse(int *array, int array_len)
 {
     if (array != NULL && array_len >= 0)
-    for (int i = 0; i < array_len / 2; i++)
-    {
-        int tmp = array[i];
-        array[i] = array[array_len - i - 1];
-        array[array_len - i - 1] = tmp;
-    }
+        for (int i = 0; i < array_len / 2; i++)
+        {
+            int tmp = array[i];
+            array[i] = array[array_len - i - 1];
+            array[array_len - i - 1] = tmp;
+        }
 }
 
 void qrcode::add_remaining_bits(int *&finalMessage, int finalMessageLen, int QRVersion, int &len)
@@ -572,9 +567,13 @@ void qrcode::add_mask(std::int8_t *QRData, int QRWidth, int ECL, int formatData[
         case I_PLUS_J_MOD_3:
             mpr = I_PLUS_J_MOD_3;
             for (int row = 0; row < QRWidth; row++)
-                for (int column = (int[3]){0, 2, 1}[row % 3]; column < QRWidth; column += 3)
+            {
+                int bit0 = ((row % 3) & 0b0001) << 1;
+                int bit1 = ((row % 3) & 0b0010) >> 1;
+                for (int column = bit0 | bit1; column < QRWidth; column += 3)
                     if (QRDataCopy[row * QRWidth + column] > 1)
                         QRDataCopy[row * QRWidth + column] ^= 1;
+            }
             break;
         case I_DIV_2_PLUS_J_DIV_3_MOD_2:
             mpr = I_DIV_2_PLUS_J_DIV_3_MOD_2;
@@ -724,7 +723,7 @@ int qrcode::evaluate_pattern_penalty(std::int8_t *QRData, int QRWidth)
 int qrcode::evaluate_ratio_penalty(std::int8_t *QRData, int QRWidth)
 {
     int darkModules = 0;
-    for(int i = 0; i < QRWidth * QRWidth; i++)
+    for (int i = 0; i < QRWidth * QRWidth; i++)
         darkModules += QRData[i] % 2;
     int ratio = (int)round((double)darkModules / (QRWidth * QRWidth) * 100);
     int previousMultiple = ratio - ratio % 5;
@@ -744,9 +743,10 @@ void qrcode::add_white_border(std::int8_t *QRData, int QRWidth)
 
 void qrcode::print_qr(std::int8_t *QRData, int QRWidth)
 {
-    for(int i = 0; i < QRWidth * QRWidth; i++){
+    for (int i = 0; i < QRWidth * QRWidth; i++)
+    {
         printf("%s██" ANSI_COLOR_RESET, QRData[i] % 2 == 0 ? ANSI_COLOR_WHITE : QRData[i] % 2 == 1 ? ANSI_COLOR_BLACK : ANSI_COLOR_RED);
-        if(i != 0 && i % QRWidth == 0)
+        if (i != 0 && i % QRWidth == 0)
             printf("\n");
     }
 }
@@ -754,9 +754,10 @@ void qrcode::print_qr(std::int8_t *QRData, int QRWidth)
 void qrcode::print_array(int *array, int len)
 {
     printf("len: %d\n[", len);
-    for (int i = 0; i < len; i++){
+    for (int i = 0; i < len; i++)
+    {
         printf("%d%s", array[i], i < len - 1 ? ", " : "]\n");
-        if((i+1) % 15 == 0)
+        if ((i + 1) % 15 == 0)
             printf("\n");
     }
 }
