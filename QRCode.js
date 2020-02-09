@@ -1,10 +1,15 @@
+<<<<<<< HEAD
 let genQRData = (() => {
+=======
+let gen_qr_matrix = (()=>{
+>>>>>>> c33634a46f0a8ac3be14656b61738e3e2c093d5d
     let canRun = false;
     Module.onRuntimeInitialized = () => canRun = true;
     const BUFFER_LENGTH = 32768;
     let QRData;
     let output_ptr;
     let gen_qr_code;
+<<<<<<< HEAD
     let gen_qr = function (message, ECL) {
         if (canRun) {
             QRData = new Int8Array(BUFFER_LENGTH);
@@ -12,6 +17,18 @@ let genQRData = (() => {
             output_ptr = Module._malloc(QRData.length);
             Module.HEAP8.set(QRData, output_ptr);
             has_init = true;
+=======
+    let has_init = false;
+    let gen_qr = function (message, ECL) {
+        if (canRun) {
+            if (!has_init) {
+                QRData = new Int8Array(BUFFER_LENGTH);
+                gen_qr_code = Module.cwrap("gen_qr", null, ["number", "string", "number"]);
+                output_ptr = Module._malloc(QRData.length);
+                Module.HEAP8.set(QRData, output_ptr);
+                has_init = true;
+            }
+>>>>>>> c33634a46f0a8ac3be14656b61738e3e2c093d5d
             gen_qr_code(ECL, message, output_ptr);
             const result = {
                 size: undefined,
@@ -34,6 +51,7 @@ let genQRData = (() => {
     }
     return gen_qr;
 })();
+<<<<<<< HEAD
 const _options = {
     message: "Hello World",
     ECL: 0,
@@ -193,3 +211,5 @@ class QRCode {
 
 QRCode.options = _options;
 QRCode.ECL = _ECL;
+=======
+>>>>>>> c33634a46f0a8ac3be14656b61738e3e2c093d5d
