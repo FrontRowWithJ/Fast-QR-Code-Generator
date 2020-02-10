@@ -2,7 +2,7 @@
 Fast-QR-Code-Generator is a Webassembly backend and javascript front end that generates qr codes quickly and supports ISO/IEC 8859 8-bit character encoding.
 
 ## Prerequisites
-A browser that supports Webassembly
+A browser that supports Webassembly.
 If you are using an older browser, I recommend checking if the webassembly flag of your browser is set correctly.
 For a simple server application, I recommend Python SimpleHTTPServer
 
@@ -16,6 +16,8 @@ Open your web browser to your specified uri. If you use the example provided it 
 * [C++](https://en.wikipedia.org/wiki/C%2B%2B) - A general purpose programming language.
 * [Javascript](https://en.wikipedia.org/wiki/JavaScript) - A dynamically typed programming language, built for web applications.
 
+## Try Me
+Here's a [link](https://CoolRCodes.machrinome.com) to try out the library if you want to see it in action
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](https://github.com/FrontRowWithJ/Fast-QR-Code-Generator/blob/master/LICENSE) file for details
