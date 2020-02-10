@@ -1,4 +1,4 @@
-# Fast-QR-Code-Generator
+# QR-Code-WASM
 Fast-QR-Code-Generator is a Webassembly backend and javascript front end that generates qr codes quickly and supports ISO/IEC 8859 8-bit character encoding.
 
 ## Prerequisites
